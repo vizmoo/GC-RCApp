@@ -1,175 +1,177 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
 import { VideoPlayer } from "./video-player.js";
-import { registerGamepadEvents, registerKeyboardEvents, registerMouseEvents, sendClickEvent } from "./register-events.js";
-import { getServerConfig } from "./config.js";
+import { registerGamepadEvents, registerKeyboardEvents, registerMouseEvents, sendClickEvent } from "../../js/register-events.js";
+import { getServerConfig } from "../../js/config.js";
 
-// window.document.oncontextmenu = function () {
-//   return false;     // cancel default menu
-// };
+setup();
 
-// window.addEventListener('resize', function () {
-//   videoPlayer.resizeVideo();
-// }, true);
+const textForConnectionId = document.getElementById('text_for_connection_id');
 
-// window.addEventListener('beforeunload', async () => {
-//   await videoPlayer.stop();
-// }, true);
+let playButton;
+let videoPlayer;
+let useWebSocket;
+let connectionId;
 
-class Button extends React.Component {
-  render() {
-    return(
-      <div>
-        <button id={this.props.id} onClick={this.props.onClick}>{this.props.text}</button>
-      </div>
-    )
+
+window.document.oncontextmenu = function () {
+  return false;     // cancel default menu
+};
+
+window.addEventListener('resize', function () {
+  videoPlayer.resizeVideo();
+}, true);
+
+window.addEventListener('beforeunload', async () => {
+  await videoPlayer.stop();
+}, true);
+
+async function setup() {
+  const res = await getServerConfig();
+  useWebSocket = res.useWebSocket;
+  showWarningIfNeeded(res.startupMode);
+  showPlayButton();
+}
+
+function showWarningIfNeeded(startupMode) {
+  const warningDiv = document.getElementById("warning");
+  if (startupMode == "private") {
+    warningDiv.innerHTML = "<h4>Warning</h4> This sample is not working on Private Mode.";
+    warningDiv.hidden = false;
   }
 }
 
-class ConnectionID extends React.Component {
-    render() {
-        return(
-            <p>ConnectionID:<br />
-                <textarea id="text_for_connection_id"></textarea>
-            </p>
-        )
-    }
+function showPlayButton() {
+  if (!document.getElementById('playButton')) {
+    let elementPlayButton = document.createElement('img');
+    elementPlayButton.id = 'playButton';
+    elementPlayButton.src = 'images/Play.png';
+    elementPlayButton.alt = 'Start Streaming';
+    playButton = document.getElementById('player').appendChild(elementPlayButton);
+    playButton.addEventListener('click', onClickPlayButton);
+  }
 }
 
-class App extends React.Component {
+function onClickPlayButton() {
 
-    constructor(props) {
-        super(props);
-        this.state = {
-            connectionId: null,
-            videoPlayer: null,
-            useWebSocket: null,
-            renderControls: false,
-        }
-        this.setUp = this.setUp.bind(this)
-        this.setupVideoPlayer = this.setupVideoPlayer.bind(this)
-        this.hangUp = this.hangUp.bind(this)
-    }
+  playButton.style.display = 'none';
 
-    setUp() {
+  connectionId = textForConnectionId.value;
 
-        const res = getServerConfig();
-        this.setState({ useWebSocket: res.useWebSocket })
-        this.showWarningIfNeeded(res.startupMode);
+  const playerDiv = document.getElementById('player');
 
-        // Nullify Setup Button
-        document.getElementById("setUp").disabled = true;
-        document.getElementById("hangUp").disabled = false;
+  // add video player
+  const elementVideo = document.createElement('video');
+  elementVideo.id = 'Video';
+  elementVideo.style.touchAction = 'none';
+  playerDiv.appendChild(elementVideo);
 
-        //Pull Connection ID
-        const cid = document.getElementById('text_for_connection_id').value;
-        this.setState({ connectionId: cid });
+  // add video thumbnail
+  const elementVideoThumb = document.createElement('video');
+  elementVideoThumb.id = 'VideoThumbnail';
+  elementVideoThumb.style.touchAction = 'none';
+  playerDiv.appendChild(elementVideoThumb);
 
-        // add video player to player div
-        const playerDiv = document.getElementById('player');
-        const elementVideo = document.createElement('video');
-        elementVideo.id = 'Video';
-        elementVideo.style.touchAction = 'none';
-        playerDiv.appendChild(elementVideo);
+  setupVideoPlayer([elementVideo, elementVideoThumb]).then(value => videoPlayer = value);
 
-        // call setupVideoPlayer()
-        this.setupVideoPlayer([elementVideo]).then(value => this.setState({ videoPlayer: value }));
+  // add blue button
+  const elementBlueButton = document.createElement('button');
+  elementBlueButton.id = "blueButton";
+  elementBlueButton.innerHTML = "Light on";
+  playerDiv.appendChild(elementBlueButton);
+  elementBlueButton.addEventListener("click", function () {
+    console.log("blue clicked")
+    sendClickEvent(videoPlayer, 1);
+  });
 
-        // add blue, green, orange, and fullscreen buttons
-        this.setState({ renderControls: true })
-    }
+  // add green button
+  const elementGreenButton = document.createElement('button');
+  elementGreenButton.id = "greenButton";
+  elementGreenButton.innerHTML = "Light off";
+  playerDiv.appendChild(elementGreenButton);
+  elementGreenButton.addEventListener("click", function () {
+    console.log("green clicked")
+    sendClickEvent(videoPlayer, 2);
+  });
 
-    async setupVideoPlayer(elements) {
-        const videoPlayer = new VideoPlayer(elements);
-        await videoPlayer.setupConnection(this.state.connectionId, this.state.useWebSocket);
-      
-        videoPlayer.ondisconnect = this.hangUp;
-        registerGamepadEvents(videoPlayer);
-        registerKeyboardEvents(videoPlayer);
-        registerMouseEvents(videoPlayer, elements[0]);
-      
-        return videoPlayer;
-    }
+  // add orange button
+  const elementOrangeButton = document.createElement('button');
+  elementOrangeButton.id = "orangeButton";
+  elementOrangeButton.innerHTML = "Play audio";
+  playerDiv.appendChild(elementOrangeButton);
+  elementOrangeButton.addEventListener("click", function () {
+    console.log("orange clicked")
+    sendClickEvent(videoPlayer, 3);
+  });
 
-    showWarningIfNeeded(startupMode) {
-        const warningDiv = document.getElementById("warning");
-        if (startupMode == "private") {
-          warningDiv.innerHTML = "<h4>Warning</h4> This sample is not working on Private Mode.";
-          warningDiv.hidden = false;
+  // add red button
+  const elementRedButton = document.createElement('button');
+  elementRedButton.id = "redButton";
+  elementRedButton.innerHTML = "Toggle Red";
+  playerDiv.appendChild(elementRedButton);
+  elementRedButton.addEventListener("click", function () {
+    console.log("red clicked")
+    sendClickEvent(videoPlayer, 4);
+  });
+
+  // add fullscreen button
+  const elementFullscreenButton = document.createElement('img');
+  elementFullscreenButton.id = 'fullscreenButton';
+  elementFullscreenButton.src = 'images/FullScreen.png';
+  playerDiv.appendChild(elementFullscreenButton);
+  elementFullscreenButton.addEventListener("click", function () {
+    if (!document.fullscreenElement || !document.webkitFullscreenElement) {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+      }
+      else if (document.documentElement.webkitRequestFullscreen) {
+        document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+      } else {
+        if (playerDiv.style.position == "absolute") {
+          playerDiv.style.position = "relative";
+        } else {
+          playerDiv.style.position = "absolute";
         }
       }
-
-    hangUp() {
-        this.state.videoPlayer.hangUpConnection(this.state.connectionId);
-        this.setState({
-            connectionId: null,
-            videoPlayer: null,
-            renderControls: false,
-        })        
-        document.getElementById("setUp").disabled = false;
-        document.getElementById("hangUp").disabled = true;
     }
+  });
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+  document.addEventListener('fullscreenchange', onFullscreenChange);
 
-    handleFullscreen() {
-        const playerDiv = document.getElementById('player');
-        const elementFullscreenButton = document.getElementById('fullscreenButton');
-        if (!document.fullscreenElement || !document.webkitFullscreenElement) {
-            if (document.documentElement.requestFullscreen) {
-              document.documentElement.requestFullscreen();
-            }
-            else if (document.documentElement.webkitRequestFullscreen) {
-              document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
-            } else {
-              if (playerDiv.style.position === "absolute") {
-                playerDiv.style.position = "relative";
-              } else {
-                playerDiv.style.position = "absolute";
-              }
-            }
-        }
-
-        document.addEventListener('webkitfullscreenchange', onFullscreenChange);
-        document.addEventListener('fullscreenchange', onFullscreenChange);
-      
-        function onFullscreenChange() {
-          if (document.webkitFullscreenElement || document.fullscreenElement) {
-            playerDiv.style.position = "absolute";
-            elementFullscreenButton.style.display = 'none';
-          }
-          else {
-            playerDiv.style.position = "relative";
-            elementFullscreenButton.style.display = 'block';
-          }
-        }
+  function onFullscreenChange() {
+    if (document.webkitFullscreenElement || document.fullscreenElement) {
+      playerDiv.style.position = "absolute";
+      elementFullscreenButton.style.display = 'none';
     }
-
-    render() {
-        const appLayout = []
-        const playerLayout = []
-
-        appLayout.push(<h1>GC RCApp</h1>)
-        appLayout.push(<div id="warning" hidden={true}></div>)
-        
-        appLayout.push(<ConnectionID />)
-        appLayout.push(<Button id="setUp" text="Set Up" onClick={this.setUp} />)
-        appLayout.push(<Button id="hangUp" text="Hang Up" onClick={this.hangUp} />)
-
-        if (this.state.renderControls) {
-            playerLayout.push(<Button id="blueButton" type='text' text="Light On" onClick={sendClickEvent(this.state.videoPlayer, 1)} />)
-            playerLayout.push(<Button id="greenButton" type='text' text="Light Off" onClick={sendClickEvent(this.state.videoPlayer, 2)} />)
-            playerLayout.push(<Button id="orangeButton" type='text' text="Play Sound" onClick={sendClickEvent(this.state.videoPlayer, 3)} />)
-            playerLayout.push(<Button id="fullscreenButton" type='image' image="images/fullscreen.png" onClick={this.handleFullscreen} />)
-        }
-
-        return(
-        <div id="container">
-            {appLayout}
-            <div id="player">
-                {playerLayout}
-            </div>
-        </div>
-        )
+    else {
+      playerDiv.style.position = "relative";
+      elementFullscreenButton.style.display = 'block';
     }
+  }
+
 }
 
-ReactDOM.render(<App/>, document.getElementById('root'));
+async function setupVideoPlayer(elements) {
+  const videoPlayer = new VideoPlayer(elements);
+  await videoPlayer.setupConnection(connectionId, useWebSocket);
+
+  videoPlayer.ondisconnect = onDisconnect;
+  registerGamepadEvents(videoPlayer);
+  registerKeyboardEvents(videoPlayer);
+  registerMouseEvents(videoPlayer, elements[0]);
+
+  return videoPlayer;
+}
+
+function onDisconnect() {
+  const playerDiv = document.getElementById('player');
+  clearChildren(playerDiv);
+  videoPlayer.hangUp(connectionId);
+  videoPlayer = null;
+  connectionId = null;
+  showPlayButton();
+}
+
+function clearChildren(element) {
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+}
