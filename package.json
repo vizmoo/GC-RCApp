@@ -5,12 +5,12 @@
   "scripts": {
     "prestart": "npm install",
     "build": "tsc -p tsconfig.build.json",
-    "test": "jest --colors test/*.ts",
     "newman": "newman run test/renderstreaming.postman_collection.json",
     "start": "node ./build/index.js",
     "dev": "ts-node ./src/index.ts",
     "lint": "eslint src/**/*.ts test/**/*.ts",
-    "pack": "pkg ."
+    "pack": "pkg .",
+    "webpack": "webpack"
   },
   "dependencies": {
     "@types/express": "^4.17.13",
@@ -21,17 +21,24 @@
     "debug": "~2.6.9",
     "express": "~4.16.4",
     "morgan": "^1.10.0",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
     "uuid": "^3.4.0",
     "ws": "^7.5.5"
   },
   "devDependencies": {
+    "@babel/core": "^7.17.8",
+    "@babel/plugin-proposal-class-properties": "^7.16.7",
+    "@babel/plugin-transform-runtime": "^7.17.0",
+    "@babel/preset-env": "^7.16.11",
+    "@babel/preset-react": "^7.16.7",
     "@jest-mock/express": "^1.4.5",
     "@types/jest": "^27.0.2",
     "@types/morgan": "^1.9.3",
     "@typescript-eslint/eslint-plugin": "^2.34.0",
     "@typescript-eslint/parser": "^2.34.0",
+    "babel-core": "^6.26.3",
+    "babel-loader": "^8.2.3",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-react": "^6.24.1",
     "eslint": "^6.8.0",
     "eslint-plugin-jest": "^24.5.2",
     "jest": "^27.2.0",
@@ -39,9 +46,13 @@
     "mock-socket": "^9.0.5",
     "newman": "^5.3.0",
     "pkg": "^4.5.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
     "ts-jest": "^27.0.5",
     "ts-node": "^10.2.1",
-    "typescript": "^3.9.10"
+    "typescript": "^3.9.10",
+    "webpack": "^5.70.0",
+    "webpack-cli": "^4.9.2"
   },
   "bin": {
     "webserver": "build/index.js"
