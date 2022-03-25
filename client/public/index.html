@@ -11,7 +11,7 @@
 
 <body>
   <div id="chooseLevelSidebar" class="ui grey inverted left vertical menu sidebar">
-    <span class="ui large yellow text">Choose a playlist</span>
+    <span id="chooseLevelText" class="ui large yellow text">Choose a playlist</span>
     <div style="width:250px;height:350px; overflow-x: hidden; overflow-y: scroll;">
       <table class="ui celled table">
         <tbody id="levelList">
@@ -21,9 +21,9 @@
     <div id="closeSidebarButton" class="ui large button">Cancel</div>
     <div id="useSongSidebarButton" class="ui large button">Use This One</div>
     <div class="ui list">
-      <div class="item"><span class="ui large yellow text">Playlist details</span></div>
-      <div class="item levelOnly" style="display: none"><span id="detailsDifficulty" class="ui medium yellow text">Difficulty: </span></div>
-      <div class="item levelOnly" style="display: none"><span id="detailsSong" class="ui medium yellow text">Song: </span></div>
+      <div class="item"><span id="detailsTitle" class="ui large yellow text">Playlist details</span></div>
+      <div class="item STATE CHOOSE_LEVEL" style="display: none"><span id="detailsDifficulty" class="ui medium yellow text">Difficulty: </span></div>
+      <div class="item STATE CHOOSE_LEVEL" style="display: none"><span id="detailsSong" class="ui medium yellow text">Song: </span></div>
       <div class="item"><span id="detailsCreator" class="ui medium yellow text">Creator: </span></div>
       <div class="item"><span id="detailsDate"class="ui medium yellow text">Date Modified: </span></div>
       <div class="item"><span id="detailsNotes" class="ui medium yellow text">Notes: </span></div>
@@ -31,8 +31,8 @@
   </div>
   <div class="pusher">
     <div class="ui celled grid">
-      <div class="grey row">
-        <div class="twenty wide column">
+      <div id="controlTopbar" class="grey row">
+        <div class="twenty wide column HIDESTATE PAIRING">
           <div class="ui compact grid">
             <div class="three wide column">
               <div class="ui compact grid">
@@ -65,10 +65,8 @@
                   <div class="row">
                     <button id="volumeButton" class="ui left floated fluid big black button">
                       <span id="volumeText" class="ui yellow text">Vol 100</span>
-                    </button>             
-                  </div>
-                  <div class="row">
-                    <div id="volumeSlider" style="display: none" class="ui slider"></div>
+                    </button>
+                    <div id="volumeSlider" style="display: none" class="ui slider"></div>             
                   </div>
                 </div>
               </div>
@@ -96,32 +94,139 @@
           </div>
         </div>
       </div>
-      <div class="grey row">
+      <div class="grey row" id="videoArea">
         <div id="controlSidebar" class="two wide column">
-          <div class="ui compact grid">
+          <div class="ui compact grid HIDESTATE PAIRING">
             <div class="row">
               <span class="ui big yellow text">00:00</span>
             </div>
             <div class="row">
               <span class="ui big yellow text">99:99</span>
             </div>
-            <div class="row">
+            <div class="row STATE UNHANDLED" style="display: none">
+              <button id="forceCancelButton" class="ui left floated fluid big black button">
+                <span class="ui yellow text">Force Cancel</span>
+              </button>          
+            </div>
+            <div class="row STATE STOPPED" style="display: none">
               <button id="chooseLevelButton" class="ui left floated fluid big black button">
                 <span class="ui yellow text">Choose a level</span>
               </button>          
             </div>
-            <div class="row">
-              <button class="ui left floated fluid big black button">
+            <div class="row STATE STOPPED" style="display: none">
+              <button id="replayLevelButton" class="ui left floated fluid big black button">
                 <span class="ui yellow text">Replay</span>
               </button>          
             </div>
+            <div class="row DEBUG STATE STOPPED" style="display: none">
+              <button id="goToSystemMenu" class="ui left floated fluid big red button">
+                <span class="ui yellow text">Go To System Menu</span>
+              </button>          
+            </div>
+            <div class="row DEBUG STATE STOPPED" style="display: none">
+              <button id="goToUnhandled" class="ui left floated fluid big red button">
+                <span class="ui yellow text">Go To Unhandled</span>
+              </button>          
+            </div>
+            <div class="row STATE LEVEL_START" style="display: none">
+              <button id="startCasualButton" class="ui left floated fluid big black button">
+                <span class="ui yellow text">Start Casual</span>
+              </button>          
+            </div>
+            <div class="row STATE LEVEL_START" style="display: none">
+              <button id="startCompetitiveButton" class="ui left floated fluid big black button">
+                <span class="ui yellow text">Start Competitive</span>
+              </button>          
+            </div>
+            <div class="row STATE LEVEL_START" style="display: none">
+              <button id="cancelStartButton" class="ui left floated fluid big black button">
+                <span class="ui yellow text">Cancel</span>
+              </button>
+            </div>  
+            <div class="row STATE CATCHING" style="display: none">
+              <button id="pauseButton" class="ui left floated fluid big black button">
+                <span class="ui yellow text">Pause</span>
+              </button>
+            </div>
+            <div class="row DEBUG STATE CATCHING" style="display: none">
+              <button id="endLevel" class="ui left floated fluid big red button">
+                <span class="ui yellow text">End Level</span>
+              </button>          
+            </div>  
+            <div class="row STATE PAUSED" style="display: none">
+              <button id="pauseResumeButton" class="ui left floated fluid big black button">
+                <span class="ui yellow text">Resume</span>
+              </button>
+            </div>  
+            <div class="row STATE PAUSED" style="display: none">
+              <button id="pauseRestartButton" class="ui left floated fluid big black button">
+                <span class="ui yellow text">Restart</span>
+              </button>
+            </div>  
+            <div class="row STATE PAUSED" style="display: none">
+              <button id="pauseQuitButton" class="ui left floated fluid big black button">
+                <span class="ui yellow text">Quit Level</span>
+              </button>
+            </div>
+            <div class="row STATE CALIBRATING" style="display: none">
+              <button id="seatedToggleButton" class="ui left floated fluid big black button">
+                <span id="seatedToggleText" class="ui yellow text">Seated Mode Off</span>
+              </button>          
+            </div>
+            <div class="row STATE CALIBRATING" style="display: none">
+              <button id="calibratingCancelButton" class="ui left floated fluid big black button">
+                <span class="ui yellow text">Cancel</span>
+              </button>          
+            </div>
+            <div class="row DEBUG STATE CALIBRATING" style="display: none">
+              <button id="goToLoading" class="ui left floated fluid big red button">
+                <span class="ui yellow text">Go To Loading</span>
+              </button>          
+            </div>
+            <div class="row STATE LOADING">
+              <span class="ui big yellow text">Level is loading. Please wait...</span>
+            </div>
+            <div class="row DEBUG STATE LOADING" style="display: none">
+              <button id="goToLevelStart" class="ui left floated fluid big red button">
+                <span class="ui yellow text">Go To Level Start</span>
+              </button>          
+            </div>
+            <div class="row DEBUG STATE SYSTEM_MENU" style="display: none">
+              <button id="goToStopped" class="ui left floated fluid big red button">
+                <span class="ui yellow text">Go To Stopped</span>
+              </button>          
+            </div>
             <div class="row">
-              <span class="ui big yellow text">Stopped</span>
+              <span id="stateText" class="ui big yellow text">Stopped</span>
             </div>
           </div>
         </div>
-        <div class="ten wide column">
-          <div id="player"></div>
+        <div class="thirteen wide column">
+          <div id="pairing" class="STATE PAIRING">
+            <span class="ui huge yellow text" style="display: table; margin: 0 auto;">Groove Catcher Remote Control</span>
+          </div>
+          <div id="pairing" class="STATE PAIRING">
+            <span class="ui big yellow text" style="display: table; margin: 0 auto;">Choose a Headset to Connect</span>
+          </div>
+          <div style="width:650px;height:350px; overflow-x: hidden; overflow-y: scroll; margin: 0 auto; background-color: grey; align-items: center;">
+            <table class="ui celled table">
+              <tbody>
+                <tr>
+                  <td class="ui sixteen wide big black button">
+                    <span class="ui yellow text">poop balls</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="player" class="HIDESTATE PAIRING">          
+            <div class="DEBUG STATE SYSTEM_MENU" style="width:250px;height:300px; overflow-x: hidden; overflow-y: hidden; margin-right: auto; background-color:black; display: none;">
+              <span id="stateText" class="ui big yellow text">WARNING: User has activated the Quest System Menu. Groove Catcher is suspended. Press the menu button on the right controller to exit system menu.</span>       
+            </div>
+            <div style="width: 900px; height: 28px; overflow-x: hidden; overflow-y: hidden; margin-left: auto; margin-top: auto; background-color: black;">
+              <span id="errorText" class="ui large yellow text">Error: hehe</span>       
+            </div>
+          </div>
         </div>
       </div>
     </div>

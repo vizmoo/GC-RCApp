@@ -11,7 +11,7 @@ let videoPlayer;
 let useWebSocket;
 let connectionId;
 
-const STATES = {
+const STATE = {
   PAIRING: "Pairing",
   CATCHING: "Catching",
   STOPPED: "Stopped",
@@ -76,15 +76,16 @@ let samplePlaylists = [
 }
 ]
 
-let selectedPlaylist;
-let selectedLevel;
+let selectedPlaylist = null;
+let selectedLevel = null;
 
-let currentState = STATES.UNHANDLED;
+let currentState;
 let videoEnabled = true;
 let volumeValue = 100;
 let scoreEnabled = true;
 let scoreValue = 0;
 let uiEnabled = true;
+let seatedMode = false;
 
 window.document.oncontextmenu = function () {
   return false;     // cancel default menu
@@ -101,7 +102,9 @@ window.addEventListener('beforeunload', async () => {
 async function setup() {
   const res = await getServerConfig();
   useWebSocket = res.useWebSocket;
-  showPlayButton();
+  setState(STATE.PAIRING);
+  controlTopbar.style.backgroundColor = "black";
+  videoArea.style.backgroundColor = "black";
 
   const videoToggleButton = document.getElementById("videoToggleButton")
   const videoToggleText = document.getElementById("videoToggleText")
@@ -148,13 +151,102 @@ async function setup() {
     uiToggleText.innerHTML = uiEnabled ? "UI On" : "UI Off"
   });
 
+  const forceCancelButton = document.getElementById("forceCancelButton")
+  forceCancelButton.addEventListener("click", function () {
+    setState(STATE.STOPPED)
+  })
+
+  const startCasualButton = document.getElementById("startCasualButton")
+  startCasualButton.addEventListener("click", function () {
+    setState(STATE.CATCHING)
+  })
+
+  const startCompetitiveButton = document.getElementById("startCompetitiveButton")
+  startCompetitiveButton.addEventListener("click", function () {
+    setState(STATE.CATCHING)
+  })
+
+  const cancelStartButton = document.getElementById("cancelStartButton")
+  cancelStartButton.addEventListener("click", function () {
+    setState(STATE.STOPPED)
+  })
+
+  const pauseButton = document.getElementById("pauseButton")
+  pauseButton.addEventListener("click", function () {
+    setState(STATE.PAUSED)
+  })
+
+  const pauseResumeButton = document.getElementById("pauseResumeButton")
+  pauseResumeButton.addEventListener("click", function () {
+    setState(STATE.CATCHING)
+  })
+
+  const pauseRestartButton = document.getElementById("pauseRestartButton")
+  pauseRestartButton.addEventListener("click", function () {
+    setState(STATE.LEVEL_START)
+  })
+
+  const pauseQuitButton = document.getElementById("pauseQuitButton")
+  pauseQuitButton.addEventListener("click", function () {
+    setState(STATE.STOPPED)
+  })
+
+  const replayLevelButton = document.getElementById("replayLevelButton")
+  replayLevelButton.addEventListener("click", function () {
+    setState(STATE.CALIBRATING)
+  })
+
+  const seatedToggleButton = document.getElementById("seatedToggleButton")
+  const seatedToggleText = document.getElementById("seatedToggleText")
+  seatedToggleButton.addEventListener("click", function () {
+    seatedMode = !seatedMode
+    seatedToggleText.innerHTML = seatedMode ? "Seated Mode On" : "Seated Mode Off"
+  })
+
+  const calibratingCancelButton = document.getElementById("calibratingCancelButton")
+  calibratingCancelButton.addEventListener("click", function () {
+    setState(STATE.STOPPED)
+  })
+
+  //--------BEGIN DEBUG BUTTONS---------
+  const goToLoading = document.getElementById("goToLoading")
+  goToLoading.addEventListener("click", function () {
+    setState(STATE.LOADING)
+  })
+
+  const goToLevelStart = document.getElementById("goToLevelStart")
+  goToLevelStart.addEventListener("click", function () {
+    setState(STATE.LEVEL_START)
+  })
+
+  const endLevel = document.getElementById("endLevel")
+  endLevel.addEventListener("click", function () {
+    setState(STATE.STOPPED)
+  })
+
+  const goToSystemMenu = document.getElementById("goToSystemMenu")
+  goToSystemMenu.addEventListener("click", function () {
+    setState(STATE.SYSTEM_MENU)
+  })
+
+  const goToUnhandled = document.getElementById("goToUnhandled")
+  goToUnhandled.addEventListener("click", function () {
+    setState(STATE.UNHANDLED)
+  })
+
+  const goToStopped = document.getElementById("goToStopped")
+  goToStopped.addEventListener("click", function () {
+    setState(STATE.STOPPED)
+  })
+  //--------END DEBUG BUTTONS---------
+
   const chooseLevelButton = document.getElementById("chooseLevelButton")
   chooseLevelButton.addEventListener("click", function() {
     $('.ui.sidebar')
       .sidebar('show')
     ;
     const levelList = document.getElementById("levelList")
-    currentState = STATES.CHOOSE_PLAYLIST
+    setState(STATE.CHOOSE_PLAYLIST)
     PopulateList(levelList)    
   })
 
@@ -175,12 +267,13 @@ async function setup() {
 
   const closeSidebarButton = document.getElementById("closeSidebarButton")
   closeSidebarButton.addEventListener("click", function() {
-    if (currentState === STATES.CHOOSE_PLAYLIST) {
+    if (currentState === STATE.CHOOSE_PLAYLIST) {
       $('.ui.sidebar')
         .sidebar('hide')
       ;
-    } else if (currentState === STATES.CHOOSE_LEVEL) {
-      currentState = STATES.CHOOSE_PLAYLIST
+      setState(STATE.STOPPED)
+    } else if (currentState === STATE.CHOOSE_LEVEL) {
+      setState(STATE.CHOOSE_PLAYLIST)
       const levelList = document.getElementById("levelList")
       levelList.innerHTML = ''
       PopulateList(levelList)
@@ -189,12 +282,12 @@ async function setup() {
 
   const useSongSidebarButton = document.getElementById("useSongSidebarButton")
   useSongSidebarButton.addEventListener("click", function() {
-    if (currentState === STATES.CHOOSE_PLAYLIST) {
-      currentState = STATES.CHOOSE_LEVEL
+    if (currentState === STATE.CHOOSE_PLAYLIST && selectedPlaylist !== null) {
+      setState(STATE.CHOOSE_LEVEL)
       const levelList = document.getElementById("levelList")
       levelList.innerHTML = ''
       PopulateList(levelList)
-    } else if (currentState === STATES.CHOOSE_LEVEL) {
+    } else if (currentState === STATE.CHOOSE_LEVEL && selectedLevel !== null) {
       $('.ui.sidebar')
         .sidebar('hide')
       ;
@@ -202,20 +295,52 @@ async function setup() {
       levelName.innerHTML = selectedLevel.name
       const songName = document.getElementById("songName")
       songName.innerHTML = selectedLevel.song
+      setState(STATE.CALIBRATING)
     }
   })
 }
 
 function setState(state) {
-  
+  currentState = state;
+  const stateText = document.getElementById("stateText");
+  stateText.innerHTML = currentState;
+  updateElementVisibility()
+}
+
+function updateElementVisibility() {
+  const stateElements = document.getElementsByClassName("STATE")
+  for (var i = 0; i < stateElements.length; i++) {
+    const element = stateElements[i]
+    const stateClass = getKeyByValue(STATE, currentState)
+    element.style.display = (element.classList.contains(stateClass)) ? "flex" : "none"
+  }
+  const hideStateElements = document.getElementsByClassName("HIDESTATE")
+  for (var i = 0; i < hideStateElements.length; i++) {
+    const element = hideStateElements[i]
+    const hideStateClass = getKeyByValue(STATE, currentState)
+    console.log(element)
+    console.log(hideStateClass)
+    console.log(element)
+    element.style.visibility = (element.classList.contains(hideStateClass)) ? "hidden" : "visible"
+  }
+}
+
+function getKeyByValue(object, value) {
+  return Object.keys(object).find(key => object[key] === value);
 }
 
 function PopulateList(levelList) {
   let listItems;
-  if (currentState === STATES.CHOOSE_PLAYLIST) {
+  if (currentState === STATE.CHOOSE_PLAYLIST) {
     listItems = samplePlaylists
-  } else if (currentState === STATES.CHOOSE_LEVEL) {
+    document.getElementById("chooseLevelText").innerHTML = "Choose a Playlist"
+    document.getElementById("closeSidebarButton").innerHTML = "Cancel"
+    document.getElementById("detailsTitle").innerHTML = "Playlist Details"
+  } else if (currentState === STATE.CHOOSE_LEVEL) {
     listItems = selectedPlaylist.levels;
+    document.getElementById("chooseLevelText").innerHTML = "Choose a Level"
+    document.getElementById("closeSidebarButton").innerHTML = "Back"
+    document.getElementById("detailsTitle").innerHTML = "Level Details"
   }
   listItems.forEach(function(item, index) {
     const listItem = document.createElement("tr");
@@ -232,15 +357,10 @@ function PopulateList(levelList) {
     document.getElementById("detailsDate").innerHTML = "Date Modified: "
     document.getElementById("detailsNotes").innerHTML = "Notes: "
 
-    const levelOnly = document.getElementsByClassName("levelOnly")
-    for (var i = 0; i < levelOnly.length; i++) {
-      levelOnly[i].style.display = (currentState === STATES.CHOOSE_LEVEL) ? "block" : "none"
-    }
-
     listButton.addEventListener("click", function() {
-      if (currentState === STATES.CHOOSE_PLAYLIST) {
+      if (currentState === STATE.CHOOSE_PLAYLIST) {
         selectedPlaylist = item;
-      } else if (currentState === STATES.CHOOSE_LEVEL) {
+      } else if (currentState === STATE.CHOOSE_LEVEL) {
         selectedLevel = item;
         document.getElementById("detailsDifficulty").innerHTML = "Difficulty: " + item.difficulty
         document.getElementById("detailsSong").innerHTML = "Song: " + item.song
@@ -257,17 +377,6 @@ function showWarningIfNeeded(startupMode) {
   if (startupMode == "private") {
     warningDiv.innerHTML = "<h4>Warning</h4> This sample is not working on Private Mode.";
     warningDiv.hidden = false;
-  }
-}
-
-function showPlayButton() {
-  if (!document.getElementById('playButton')) {
-    let elementPlayButton = document.createElement('img');
-    elementPlayButton.id = 'playButton';
-    elementPlayButton.src = 'images/Play.png';
-    elementPlayButton.alt = 'Start Streaming';
-    playButton = document.getElementById('player').appendChild(elementPlayButton);
-    playButton.addEventListener('click', onClickPlayButton);
   }
 }
 
@@ -292,81 +401,6 @@ function onClickPlayButton() {
   playerDiv.appendChild(elementVideoThumb);
 
   setupVideoPlayer([elementVideo, elementVideoThumb]).then(value => videoPlayer = value);
-
-  // add blue button
-  const elementBlueButton = document.createElement('button');
-  elementBlueButton.id = "blueButton";
-  elementBlueButton.innerHTML = "Light on";
-  playerDiv.appendChild(elementBlueButton);
-  elementBlueButton.addEventListener("click", function () {
-    console.log("blue clicked")
-    sendClickEvent(videoPlayer, 1);
-  });
-
-  // add green button
-  const elementGreenButton = document.createElement('button');
-  elementGreenButton.id = "greenButton";
-  elementGreenButton.innerHTML = "Light off";
-  playerDiv.appendChild(elementGreenButton);
-  elementGreenButton.addEventListener("click", function () {
-    console.log("green clicked")
-    sendClickEvent(videoPlayer, 2);
-  });
-
-  // add orange button
-  const elementOrangeButton = document.createElement('button');
-  elementOrangeButton.id = "orangeButton";
-  elementOrangeButton.innerHTML = "Play audio";
-  playerDiv.appendChild(elementOrangeButton);
-  elementOrangeButton.addEventListener("click", function () {
-    console.log("orange clicked")
-    sendClickEvent(videoPlayer, 3);
-  });
-
-  // add red button
-  const elementRedButton = document.createElement('button');
-  elementRedButton.id = "redButton";
-  elementRedButton.innerHTML = "Toggle Red";
-  playerDiv.appendChild(elementRedButton);
-  elementRedButton.addEventListener("click", function () {
-    console.log("red clicked")
-    sendMessageJSON(videoPlayer, "hello my name is jason");
-  });
-
-  // add fullscreen button
-  const elementFullscreenButton = document.createElement('img');
-  elementFullscreenButton.id = 'fullscreenButton';
-  elementFullscreenButton.src = 'images/FullScreen.png';
-  playerDiv.appendChild(elementFullscreenButton);
-  elementFullscreenButton.addEventListener("click", function () {
-    if (!document.fullscreenElement || !document.webkitFullscreenElement) {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen();
-      }
-      else if (document.documentElement.webkitRequestFullscreen) {
-        document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
-      } else {
-        if (playerDiv.style.position == "absolute") {
-          playerDiv.style.position = "relative";
-        } else {
-          playerDiv.style.position = "absolute";
-        }
-      }
-    }
-  });
-  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
-  document.addEventListener('fullscreenchange', onFullscreenChange);
-
-  function onFullscreenChange() {
-    if (document.webkitFullscreenElement || document.fullscreenElement) {
-      playerDiv.style.position = "absolute";
-      elementFullscreenButton.style.display = 'none';
-    }
-    else {
-      playerDiv.style.position = "relative";
-      elementFullscreenButton.style.display = 'block';
-    }
-  }
 
 }
 
