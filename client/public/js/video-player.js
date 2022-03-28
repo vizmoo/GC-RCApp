@@ -31,17 +31,17 @@ export class VideoPlayer {
       _this.resizeVideo();
     }, true);
 
-    // secondly video
-    this.localStream2 = new MediaStream();
-    this.videoThumb = elements[1];
-    this.videoThumb.playsInline = true;
-    this.videoThumb.addEventListener('loadedmetadata', function () {
-      _this.videoThumb.play();
-    }, true);
+    // // secondly video
+    // this.localStream2 = new MediaStream();
+    // this.videoThumb = elements[1];
+    // this.videoThumb.playsInline = true;
+    // this.videoThumb.addEventListener('loadedmetadata', function () {
+    //   _this.videoThumb.play();
+    // }, true);
 
     this.videoTrackList = [];
     this.videoTrackIndex = 0;
-    this.maxVideoTrackLength = 2;
+    this.maxVideoTrackLength = 1;
 
     this.ondisconnect = function () { };
   }
@@ -169,15 +169,15 @@ export class VideoPlayer {
   // switch streaming destination main video and secondly video
   switchVideo(indexVideoTrack) {
     this.video.srcObject = this.localStream;
-    this.videoThumb.srcObject = this.localStream2;
+    //this.videoThumb.srcObject = this.localStream2;
 
     if (indexVideoTrack == 0) {
       this.replaceTrack(this.localStream, this.videoTrackList[0]);
-      this.replaceTrack(this.localStream2, this.videoTrackList[1]);
+      //this.replaceTrack(this.localStream2, this.videoTrackList[1]);
     }
     else {
       this.replaceTrack(this.localStream, this.videoTrackList[1]);
-      this.replaceTrack(this.localStream2, this.videoTrackList[0]);
+      //this.replaceTrack(this.localStream2, this.videoTrackList[0]);
     }
   }
 

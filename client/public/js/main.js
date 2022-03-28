@@ -4,9 +4,6 @@ import { getServerConfig } from "./config.js";
 
 setup();
 
-const textForConnectionId = document.getElementById('text_for_connection_id');
-
-let playButton;
 let videoPlayer;
 let useWebSocket;
 let connectionId;
@@ -25,6 +22,7 @@ const STATE = {
   UNHANDLED: "Unhandled"
 }
 
+// For testing population of sidebar list with playlists and levels
 let samplePlaylists = [
 {
   name: "Cool Playlist",
@@ -33,7 +31,7 @@ let samplePlaylists = [
   notes: "This is not a real playlist",
   levels: [
     {
-      name: "Cool Song",
+      name: "Cool Level",
       difficulty: "Medium",
       song: "10 Minutes of Microwaves Beeping",
       creator: "MicrowaveFan444",
@@ -41,7 +39,7 @@ let samplePlaylists = [
       notes: "WARNING: There will be microwaves"
     },
     {
-      name: "Cooler Song",
+      name: "Cooler Level",
       difficulty: "Hard",
       song: "Mary Had a Little Lamb (Xylophone Cover)",
       creator: "TimothyAge5",
@@ -49,7 +47,7 @@ let samplePlaylists = [
       notes: "His first cover :)"
     },
     {
-      name: "Coolest Song",
+      name: "Coolest Level",
       difficulty: "Expert",
       song: "Song song",
       creator: "Creator_Creator",
@@ -65,7 +63,7 @@ let samplePlaylists = [
   notes: "This one honestly just kinda blows",
   levels: [
     {
-      name: "Lame Song",
+      name: "Lame Level",
       difficulty: "Easy",
       song: "Silence 10 Hours",
       creator: "fan_of_boring_things_1993",
@@ -76,8 +74,21 @@ let samplePlaylists = [
 }
 ]
 
+// For testing population of headset ID list
+let sampleHeadsets = [
+  {
+    name: "VZ001",
+    passcode: "AAAAA"
+  },
+  {
+    name: "X4963E21",
+    passcode: "edocssap"
+  }
+]
+
 let selectedPlaylist = null;
 let selectedLevel = null;
+let selectedHeadset = null;
 
 let currentState;
 let videoEnabled = true;
@@ -87,6 +98,7 @@ let scoreValue = 0;
 let uiEnabled = true;
 let seatedMode = false;
 
+// Video event handlers from sample project
 window.document.oncontextmenu = function () {
   return false;     // cancel default menu
 };
@@ -99,12 +111,31 @@ window.addEventListener('beforeunload', async () => {
   await videoPlayer.stop();
 }, true);
 
+//Runs on page load, sets up UI event handlers and layout
 async function setup() {
   const res = await getServerConfig();
   useWebSocket = res.useWebSocket;
+
+  //UI items that only exist in Pairing state
   setState(STATE.PAIRING);
   controlTopbar.style.backgroundColor = "black";
   videoArea.style.backgroundColor = "black";
+  const headsetList = document.getElementById("headsetList")
+  PopulateList(headsetList, sampleHeadsets)  
+
+  const connectToHeadsetButton = document.getElementById("connectToHeadsetButton")
+  connectToHeadsetButton.addEventListener("click", function () {
+    const passcodeInput = document.getElementById("passcodeInput")
+    const userInput = passcodeInput.value;
+    if (userInput === selectedHeadset.passcode) {
+      setState(STATE.STOPPED)
+      controlTopbar.style.backgroundColor = "grey";
+      videoArea.style.backgroundColor = "grey";
+      const headsetId = document.getElementById("headsetId")
+      headsetId.innerHTML = selectedHeadset.name
+      onSuccessfulPair()
+    }
+  });
 
   const videoToggleButton = document.getElementById("videoToggleButton")
   const videoToggleText = document.getElementById("videoToggleText")
@@ -123,6 +154,7 @@ async function setup() {
     }
   });
 
+  //Volume slider toggle event
   $('.ui.slider')
   .slider({
     min: 0,
@@ -208,6 +240,8 @@ async function setup() {
     setState(STATE.STOPPED)
   })
 
+  //Debug Buttons are used for changing state when the condition would need to come from the game
+  //Once we have the app communicating with the game over data channel we won't need these anymore
   //--------BEGIN DEBUG BUTTONS---------
   const goToLoading = document.getElementById("goToLoading")
   goToLoading.addEventListener("click", function () {
@@ -242,14 +276,16 @@ async function setup() {
 
   const chooseLevelButton = document.getElementById("chooseLevelButton")
   chooseLevelButton.addEventListener("click", function() {
+    //Reveal sidebar on click
     $('.ui.sidebar')
       .sidebar('show')
     ;
     const levelList = document.getElementById("levelList")
     setState(STATE.CHOOSE_PLAYLIST)
-    PopulateList(levelList)    
+    PopulateSidebarList(levelList)    
   })
 
+  //Sidebar properties
   $('.ui.sidebar').sidebar(
   {
     dimPage: false,
@@ -257,6 +293,7 @@ async function setup() {
     exclusive: false,
     closable: false,
     onHidden: function(){
+      //Clear out details on hidden
       const levelList = document.getElementById("levelList")
       levelList.innerHTML = ''
       document.getElementById("detailsCreator").innerHTML = "Creator: "
@@ -265,6 +302,7 @@ async function setup() {
     }
   })
 
+  //Close button will either close the sidebar or go back to playlist selection depending on state
   const closeSidebarButton = document.getElementById("closeSidebarButton")
   closeSidebarButton.addEventListener("click", function() {
     if (currentState === STATE.CHOOSE_PLAYLIST) {
@@ -276,17 +314,18 @@ async function setup() {
       setState(STATE.CHOOSE_PLAYLIST)
       const levelList = document.getElementById("levelList")
       levelList.innerHTML = ''
-      PopulateList(levelList)
+      PopulateSidebarList(levelList)
     }
   })
 
+  //Use button will either advance to level selection or close sidebar with selected song depending on state
   const useSongSidebarButton = document.getElementById("useSongSidebarButton")
   useSongSidebarButton.addEventListener("click", function() {
     if (currentState === STATE.CHOOSE_PLAYLIST && selectedPlaylist !== null) {
       setState(STATE.CHOOSE_LEVEL)
       const levelList = document.getElementById("levelList")
       levelList.innerHTML = ''
-      PopulateList(levelList)
+      PopulateSidebarList(levelList)
     } else if (currentState === STATE.CHOOSE_LEVEL && selectedLevel !== null) {
       $('.ui.sidebar')
         .sidebar('hide')
@@ -300,6 +339,7 @@ async function setup() {
   })
 }
 
+// Updates the state of the game, changes text on UI, and toggles visibility of elements based on state
 function setState(state) {
   currentState = state;
   const stateText = document.getElementById("stateText");
@@ -307,6 +347,11 @@ function setState(state) {
   updateElementVisibility()
 }
 
+// UI Elements that are only visible in a certain state are given the class "STATE" and the const name of the state in STATE[]
+// Example: An element with class="STATE STOPPED" would only be visible in the "Stopped" state
+// If an element has the class "HIDESTATE" and a state name, then it will only be HIDDEN when in that state, and visible in any other state
+// Example: An element with class="HIDESTATE PAIRING" would be hidden in the "Pairing" state, but visible in every other state
+// This function toggles the visibility of elements tagged with "STATE" or "HIDESTATE" based on the current state
 function updateElementVisibility() {
   const stateElements = document.getElementsByClassName("STATE")
   for (var i = 0; i < stateElements.length; i++) {
@@ -318,9 +363,6 @@ function updateElementVisibility() {
   for (var i = 0; i < hideStateElements.length; i++) {
     const element = hideStateElements[i]
     const hideStateClass = getKeyByValue(STATE, currentState)
-    console.log(element)
-    console.log(hideStateClass)
-    console.log(element)
     element.style.visibility = (element.classList.contains(hideStateClass)) ? "hidden" : "visible"
   }
 }
@@ -329,7 +371,9 @@ function getKeyByValue(object, value) {
   return Object.keys(object).find(key => object[key] === value);
 }
 
-function PopulateList(levelList) {
+// This function updates the sidebar list to populate either playlists or levels, and gives each button a listener that updates the details when selected
+// TODO: Merge PopulateList and PopulateSidebarList, or call PopulateList within PopulateSidebarList to eliminate repeated code
+function PopulateSidebarList(levelList) {
   let listItems;
   if (currentState === STATE.CHOOSE_PLAYLIST) {
     listItems = samplePlaylists
@@ -372,6 +416,28 @@ function PopulateList(levelList) {
   })
 }
 
+// This function populates the headset ID selection with headset IDs, and listeners that update the selectedHeadset when clicked
+function PopulateList(list, listItems) {
+  listItems.forEach(function(item, index) {
+    const listItem = document.createElement("tr");
+    const listButton = document.createElement("td");
+    listButton.className = "ui sixteen wide big black button";
+    const listButtonText = document.createElement("span");
+    listButtonText.className = "ui yellow text"
+    listButtonText.innerHTML = item.name;
+
+    listButton.append(listButtonText)
+    listItem.append(listButton);
+    list.append(listItem);
+
+    listButton.addEventListener("click", function() {
+      selectedHeadset = item;
+      document.getElementById("selectedHeadsetText").innerHTML = "Selected: " + selectedHeadset.name
+    })
+  })
+}
+
+// TODO: Leftover from sample, should be updated to work with errorText element
 function showWarningIfNeeded(startupMode) {
   const warningDiv = document.getElementById("warning");
   if (startupMode == "private") {
@@ -380,11 +446,12 @@ function showWarningIfNeeded(startupMode) {
   }
 }
 
-function onClickPlayButton() {
+// From sample project, modified version of OnClickPlayButton()
+// Creates video player element and calls setupVideoPlayer
+// Called when passcode is accepted in PAIRING state, after transitioning to STOPPED
+function onSuccessfulPair() {
 
-  playButton.style.display = 'none';
-
-  connectionId = textForConnectionId.value;
+  connectionId = selectedHeadset.passcode;
 
   const playerDiv = document.getElementById('player');
 
@@ -394,16 +461,13 @@ function onClickPlayButton() {
   elementVideo.style.touchAction = 'none';
   playerDiv.appendChild(elementVideo);
 
-  // add video thumbnail
-  const elementVideoThumb = document.createElement('video');
-  elementVideoThumb.id = 'VideoThumbnail';
-  elementVideoThumb.style.touchAction = 'none';
-  playerDiv.appendChild(elementVideoThumb);
-
-  setupVideoPlayer([elementVideo, elementVideoThumb]).then(value => videoPlayer = value);
+  setupVideoPlayer([elementVideo]).then(value => videoPlayer = value);
 
 }
 
+// From sample project
+// Creates VideoPlayer object in video player element, creates connection with Connection ID
+// See video-player.js
 async function setupVideoPlayer(elements) {
   const videoPlayer = new VideoPlayer(elements);
   await videoPlayer.setupConnection(connectionId, useWebSocket);
@@ -416,6 +480,8 @@ async function setupVideoPlayer(elements) {
   return videoPlayer;
 }
 
+// From sample project
+// Handles video player when connection is lost
 function onDisconnect() {
   const playerDiv = document.getElementById('player');
   clearChildren(playerDiv);
@@ -431,6 +497,9 @@ function clearChildren(element) {
   }
 }
 
+// Given a video player object and string msg, allows you to send a stringified JSON across the data channel to the connected Unity game
+// Currently sends the message and timestamp of message
+// Currently unused, but do not delete
 function sendMessageJSON(videoPlayer, msg) {
   let obj = {
     "message": msg,

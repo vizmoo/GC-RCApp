@@ -40,7 +40,7 @@
                   <span class="ui large yellow text">Level</span>
                 </div>
                 <div class="row">
-                  <span id="levelName" class="ui big yellow text">[Level Name]</span>
+                  <span id="levelName" class="ui big yellow text"></span>
                 </div>
               </div>
             </div>
@@ -50,7 +50,7 @@
                   <span class="ui large yellow text">Song</span>
                 </div>
                 <div class="row">
-                  <span id="songName" class="ui big yellow text">[Song Name]</span>
+                  <span id="songName" class="ui big yellow text"></span>
                 </div>
               </div>
             </div>
@@ -87,7 +87,7 @@
                   <span class="ui large yellow text">Headset</span>
                 </div>
                 <div class="row">
-                  <span class="ui big yellow text">[HSID]</span>
+                  <span id="headsetId" class="ui big yellow text">[HSID]</span>
                 </div>
               </div>
             </div>
@@ -202,22 +202,31 @@
           </div>
         </div>
         <div class="thirteen wide column">
-          <div id="pairing" class="STATE PAIRING">
+          <div class="STATE PAIRING">
             <span class="ui huge yellow text" style="display: table; margin: 0 auto;">Groove Catcher Remote Control</span>
           </div>
-          <div id="pairing" class="STATE PAIRING">
+          <div class="STATE PAIRING">
             <span class="ui big yellow text" style="display: table; margin: 0 auto;">Choose a Headset to Connect</span>
           </div>
-          <div style="width:650px;height:350px; overflow-x: hidden; overflow-y: scroll; margin: 0 auto; background-color: grey; align-items: center;">
-            <table class="ui celled table">
+          <div class="STATE PAIRING" style="width:650px;height:350px; overflow-x: hidden; overflow-y: scroll; margin: 0 auto; background-color: grey; align-items: center;">
+            <table id="headsetList" class="ui celled table">
               <tbody>
-                <tr>
-                  <td class="ui sixteen wide big black button">
-                    <span class="ui yellow text">poop balls</span>
-                  </td>
-                </tr>
               </tbody>
             </table>
+          </div>
+          <div class="STATE PAIRING">
+            <span class="ui big yellow text" style="display: table; margin: 0 auto;">Wifi: [current wifi in use]</span>
+          </div>
+          <div class="STATE PAIRING">
+            <span id="selectedHeadsetText" class="ui big yellow text" style="display: table; margin: 0 auto;">Selected: </span>
+          </div>
+          <div class="ui input" style="display: table; margin: 0 auto;">
+            <input class="STATE PAIRING" id="passcodeInput" type="text" placeholder="Enter passcode" >
+          </div>
+          <div>
+            <button id="connectToHeadsetButton" class="ui big black button STATE PAIRING" style="display: table; margin: 0 auto;" >
+              <span class="ui yellow text">Connect</span>
+            </button> 
           </div>
           <div id="player" class="HIDESTATE PAIRING">          
             <div class="DEBUG STATE SYSTEM_MENU" style="width:250px;height:300px; overflow-x: hidden; overflow-y: hidden; margin-right: auto; background-color:black; display: none;">
@@ -230,13 +239,6 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <div id="container">
-    <p>ConnectionID:<br />
-      <textarea id="text_for_connection_id"></textarea>
-    </p>
-
   </div>
 
   <script type="text/javascript" src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
