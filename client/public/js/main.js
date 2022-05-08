@@ -78,11 +78,11 @@ let samplePlaylists = [
 let sampleHeadsets = [
   {
     name: "VZ001",
-    passcode: "AAAAA"
+    //passcode: "AAAAA"
   },
   {
     name: "X4963E21",
-    passcode: "edocssap"
+    //passcode: "edocssap"
   }
 ]
 
@@ -124,18 +124,7 @@ async function setup() {
   PopulateList(headsetList, sampleHeadsets)  
 
   const connectToHeadsetButton = document.getElementById("connectToHeadsetButton")
-  connectToHeadsetButton.addEventListener("click", function () {
-    const passcodeInput = document.getElementById("passcodeInput")
-    const userInput = passcodeInput.value;
-    if (userInput === selectedHeadset.passcode) {
-      setState(STATE.STOPPED)
-      controlTopbar.style.backgroundColor = "grey";
-      videoArea.style.backgroundColor = "grey";
-      const headsetId = document.getElementById("headsetId")
-      headsetId.innerHTML = selectedHeadset.name
-      onSuccessfulPair()
-    }
-  });
+  connectToHeadsetButton.addEventListener("click", connectToSelectedHeadset);
 
   const videoToggleButton = document.getElementById("videoToggleButton")
   const videoToggleText = document.getElementById("videoToggleText")
@@ -171,9 +160,11 @@ async function setup() {
   const scoreToggleButton = document.getElementById("scoreToggleButton")
   const scoreToggleText = document.getElementById("scoreToggleText")
   scoreToggleButton.addEventListener("click", function () {
-    scoreEnabled = !scoreEnabled
-    let toggleText = scoreEnabled ? "Visible" : "Hidden"
-    scoreToggleText.innerHTML = "Score " + toggleText + " " + scoreValue
+    scoreEnabled = !scoreEnabled;
+    let toggleText = scoreEnabled ? "Visible" : "Hidden";
+    scoreToggleText.innerHTML = "Score " + toggleText + " " + scoreValue;
+    //sendTestMessageJSON(videoPlayer, "New Score Visibility: " + toggleText);
+    sendCommandJSON(videoPlayer, 'Action', 'SetShowScore', [scoreEnabled.toString()]);
   });
 
   const uiToggleButton = document.getElementById("uiToggleButton")
@@ -431,8 +422,9 @@ function PopulateList(list, listItems) {
     list.append(listItem);
 
     listButton.addEventListener("click", function() {
-      selectedHeadset = item;
-      document.getElementById("selectedHeadsetText").innerHTML = "Selected: " + selectedHeadset.name
+      selectedHeadset = item;;
+      connectToSelectedHeadset();
+      document.getElementById("selectedHeadsetText").innerHTML = "Selected: " + selectedHeadset.name;
     })
   })
 }
@@ -446,12 +438,29 @@ function showWarningIfNeeded(startupMode) {
   }
 }
 
+//Using the current 'selectedHeadset', make a connection and start video player
+function connectToSelectedHeadset() {
+  //Skip the passcode, at least for now
+  //const passcodeInput = document.getElementById("passcodeInput")
+  //const userInput = passcodeInput.value;
+  if (true /*userInput === selectedHeadset.passcode*/) {
+    setState(STATE.STOPPED)
+    controlTopbar.style.backgroundColor = "grey";
+    videoArea.style.backgroundColor = "grey";
+    const headsetId = document.getElementById("headsetId")
+    headsetId.innerHTML = selectedHeadset.name
+    onSuccessfulPair()
+  }
+}
+
 // From sample project, modified version of OnClickPlayButton()
 // Creates video player element and calls setupVideoPlayer
 // Called when passcode is accepted in PAIRING state, after transitioning to STOPPED
 function onSuccessfulPair() {
-
-  connectionId = selectedHeadset.passcode;
+  console.log('--- video-player onSuccessfulPair');
+  //connectionId = selectedHeadset.passcode;
+  //Switch to using headset name as the passcode
+  connectionId = selectedHeadset.name;
 
   const playerDiv = document.getElementById('player');
 
@@ -472,17 +481,31 @@ async function setupVideoPlayer(elements) {
   const videoPlayer = new VideoPlayer(elements);
   await videoPlayer.setupConnection(connectionId, useWebSocket);
 
-  videoPlayer.ondisconnect = onDisconnect;
+  videoPlayer.mainDisconnect = processDisconnect;
+  videoPlayer.mainProcessMessage = processMessage;
+
+  /* Stauffer - disabled these.
+     They look like there from the sample app for controlling camera from web app.
+     May want something like this eventually but for now they generate noisy messages.
   registerGamepadEvents(videoPlayer);
   registerKeyboardEvents(videoPlayer);
   registerMouseEvents(videoPlayer, elements[0]);
+  */
 
   return videoPlayer;
 }
 
-// From sample project
+//Process a message from GC
+function processMessage(msgString) {
+  console.log("main.processMessage orig string: " + msgString);
+  let msgObj = JSON.parse(msgString);
+  console.log("   obj back to json: " + JSON.stringify(msgObj));
+}
+
+// Based on sample project
 // Handles video player when connection is lost
-function onDisconnect() {
+function processDisconnect() {
+  console.log('main.disconnect entered ---');
   const playerDiv = document.getElementById('player');
   clearChildren(playerDiv);
   videoPlayer.hangUp(connectionId);
@@ -500,10 +523,21 @@ function clearChildren(element) {
 // Given a video player object and string msg, allows you to send a stringified JSON across the data channel to the connected Unity game
 // Currently sends the message and timestamp of message
 // Currently unused, but do not delete
-function sendMessageJSON(videoPlayer, msg) {
+function sendTestMessageJSON(videoPlayer, msg) {
   let obj = {
     "message": msg,
     "timestamp": new Date()
+  }
+  videoPlayer && videoPlayer.sendMsg(JSON.stringify(obj));
+}
+
+//Send a command message as expected by RemoteControl in GC
+function sendCommandJSON(videoPlayer, command, subcommand, parametersArray) {
+  let obj = {
+    command: command,
+    subcommand: subcommand,
+    parameters: parametersArray,
+    timestamp: new Date()
   }
   videoPlayer && videoPlayer.sendMsg(JSON.stringify(obj));
 }

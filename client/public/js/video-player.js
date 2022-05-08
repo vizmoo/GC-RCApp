@@ -43,7 +43,13 @@ export class VideoPlayer {
     this.videoTrackIndex = 0;
     this.maxVideoTrackLength = 1;
 
-    this.ondisconnect = function () { };
+    //Callbacks supplied by main to get events
+    // back to main app
+    this.mainDisconnect = function () { };
+    this.mainProcessMessage = function () {};
+
+    //Stauffer - logger must be enabled
+    Logger.enable();
   }
 
   async setupConnection(connectionId, useWebSocket) {
@@ -66,7 +72,7 @@ export class VideoPlayer {
     // Create peerConnection with proxy server and set up handlers
     this.pc = new Peer(this.connectionId, true);
     this.pc.addEventListener('disconnect', () => {
-      _this.ondisconnect();
+      _this.mainDisconnect();
     });
     this.pc.addEventListener('trackevent', (e) => {
       const data = e.detail;
@@ -96,7 +102,7 @@ export class VideoPlayer {
     this.signaling.addEventListener('disconnect', async (e) => {
       const data = e.detail;
       if (_this.pc != null && _this.pc.connectionId == data.connectionId) {
-        _this.ondisconnect();
+        _this.mainDisconnect();
       }
     });
     this.signaling.addEventListener('offer', async (e) => {
@@ -127,7 +133,7 @@ export class VideoPlayer {
     // Create data channel with proxy server and set up handlers
     this.channel = this.pc.createDataChannel(this.connectionId, 'data');
     this.channel.onopen = function () {
-      Logger.log('Datachannel connected.');
+      Logger.log('video-player onopen hander: Datachannel connected.');
     };
     this.channel.onerror = function (e) {
       Logger.log("The error " + e.error.message + " occurred\n while handling data with proxy server.");
@@ -136,6 +142,7 @@ export class VideoPlayer {
       Logger.log('Datachannel disconnected.');
     };
     this.channel.onmessage = async (msg) => {
+      Logger.log("video-player: entering channel.onmessage handler...");
       // receive message from unity and operate message
       let data;
       // receive message data type is blob only on Firefox
@@ -144,13 +151,9 @@ export class VideoPlayer {
       } else {
         data = msg.data;
       }
-      const bytes = new Uint8Array(data);
-      _this.videoTrackIndex = bytes[1];
-      switch (bytes[0]) {
-        case UnityEventType.SWITCH_VIDEO:
-          _this.switchVideo(_this.videoTrackIndex);
-          break;
-      }
+      const msgString = new String(data);
+      Logger.log("video-player: channel.onmessage handler: msg: " + msgString);
+      this.mainProcessMessage(msgString);
     };
   }
 
@@ -218,16 +221,17 @@ export class VideoPlayer {
     }
     switch (this.channel.readyState) {
       case 'connecting':
-        Logger.log('Connection not ready');
+        Logger.log('video-player.sendMsg: Connection not ready');
         break;
       case 'open':
+        Logger.log('video-player.sendMsg msg: ' + msg);
         this.channel.send(msg);
         break;
       case 'closing':
-        Logger.log('Attempt to sendMsg message while closing');
+        Logger.log('video-player.sendMsg: Attempt to sendMsg message while closing');
         break;
       case 'closed':
-        Logger.log('Attempt to sendMsg message while connection closed.');
+        Logger.log('video-player.sendMsg: Attempt to sendMsg message while connection closed.');
         break;
     }
   }
