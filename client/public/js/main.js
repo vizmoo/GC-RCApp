@@ -47,6 +47,16 @@ const ACTIONS = {
     LOAD_LEVEL: "LoadLevel"
 }
 
+//Valid message strings coming from GC.
+//See OutgoingSignalMessage enum in GC:RemoteControl
+const INCOMING_MESSAGES = {
+  FULL_STATE: 'FullState',
+  DEFINES: 'Defines',
+  ALL_PLAYLISTS: 'AllPlaylists',
+  ERROR: 'Error',
+  TEST_MESSAGE: 'TestMessage'
+}
+
 // For testing population of sidebar list with playlists and levels
 let samplePlaylists = [
 {
@@ -111,21 +121,37 @@ let sampleHeadsets = [
   }
 ]
 
-//TODO - move to currentState?
-let selectedPlaylist = null;
-let selectedLevel = null;
-let selectedHeadset = null;
 
 let currentState = {
   //The primary state mode we're in
   mode: STATE_MODE.UNHANDLED,
   //Other items that make up the state
+  selectedHeadset: null,
+  playlistData: {
+    playlists: [], //array of playlist objects
+    songIdNames: {} //dict object for looking up song name by unique id
+  },  
+  selectedPlaylist: null,
+  selectedLevel: null,
   videoEnabled: true,
   volumeValue: 100,
   scoreEnabled: true,
   scoreValue: 0,
   uiEnabled: true,
   seatedMode: false
+}
+
+/////////////////////////////////////////////////
+
+//// Error handlers
+//
+function handleErrorException(contextString, errorString){
+  handleError(contextString, "Unhandled Exception: " + errorString);
+}
+
+function handleError(contextString, errorString) {
+  Logger.error(contextString + " - " + errorString);
+  //TODO show in display. Send to GC? Send to vizmoo site for error logging?
 }
 
 // Video event handlers from sample project
@@ -141,6 +167,7 @@ window.addEventListener('beforeunload', async () => {
   await videoPlayer.stop();
 }, true);
 
+////
 //Runs on page load, sets up UI event handlers and layout
 async function setup() {
   //Stauffer - logger must be enabled
@@ -351,19 +378,19 @@ async function setup() {
   //Use button will either advance to level selection or close sidebar with selected song depending on state
   const useSongSidebarButton = document.getElementById("useSongSidebarButton")
   useSongSidebarButton.addEventListener("click", function() {
-    if (currentState.mode.id === STATE_MODE.CHOOSE_PLAYLIST.id && selectedPlaylist !== null) {
+    if (currentState.mode.id === STATE_MODE.CHOOSE_PLAYLIST.id && currentState.selectedPlaylist !== null) {
       setStateMode(STATE_MODE.CHOOSE_LEVEL.id)
       const levelList = document.getElementById("levelList")
       levelList.innerHTML = ''
       PopulateSidebarList(levelList)
-    } else if (currentState.mode.id === STATE_MODE.CHOOSE_LEVEL.id && selectedLevel !== null) {
+    } else if (currentState.mode.id === STATE_MODE.CHOOSE_LEVEL.id && currentState.selectedLevel !== null) {
       $('.ui.sidebar')
         .sidebar('hide')
       ;
       const levelName = document.getElementById("levelName")
-      levelName.innerHTML = selectedLevel.name
+      levelName.innerHTML = currentState.selectedLevel.name
       const songName = document.getElementById("songName")
-      songName.innerHTML = selectedLevel.song
+      songName.innerHTML = currentState.selectedLevel.song
       sendGCAction(ACTIONS.LOAD_LEVEL, ['level info...']); //should we set local state to LoadingLevel, or do that in sendGCAction?
     }
   })
@@ -403,6 +430,12 @@ function setStateMode(stateModeId){
   updateElementVisibility()
 }
 
+// Request that GC send us its playlsists. 
+// We expect an async return via message
+function RequestPlaylists() {
+  sendGCAction(ACTIONS.GET_PLAYLISTS);
+}
+
 // UI Elements that are only visible in a certain state are given the class "STATE" and the const 'id' field of the state in STATE_MODE[] prepended by 'state'.
 // Example: An element with class="STATE stateStopped" would only be visible in the "Stopped" state
 // If an element has the class "HIDESTATE" and a state name, then it will only be HIDDEN when in that state, and visible in any other state
@@ -430,68 +463,96 @@ function getKeyByValue(object, value) {
 // This function updates the sidebar list to populate either playlists or levels, and gives each button a listener that updates the details when selected
 // TODO: Merge PopulateList and PopulateSidebarList, or call PopulateList within PopulateSidebarList to eliminate repeated code
 function PopulateSidebarList(levelList) {
-  let listItems;
-  if (currentState.mode.id === STATE_MODE.CHOOSE_PLAYLIST.id) {
-    listItems = samplePlaylists
-    document.getElementById("chooseLevelText").innerHTML = "Choose a Playlist"
-    document.getElementById("closeSidebarButton").innerHTML = "Cancel"
-    document.getElementById("detailsTitle").innerHTML = "Playlist Details"
-  } else if (currentState.mode.id === STATE_MODE.CHOOSE_LEVEL.id) {
-    listItems = selectedPlaylist.levels;
-    document.getElementById("chooseLevelText").innerHTML = "Choose a Level"
-    document.getElementById("closeSidebarButton").innerHTML = "Back"
-    document.getElementById("detailsTitle").innerHTML = "Level Details"
-  }
-  listItems.forEach(function(item, index) {
-    const listItem = document.createElement("tr");
-    const listButton = document.createElement("td");
-    listButton.className = "ui sixteen wide big button";
-    listButton.innerHTML = item.name;
-
-    listItem.append(listButton)
-    levelList.append(listItem)
-
-    document.getElementById("detailsDifficulty").innerHTML = "Difficulty: "
-    document.getElementById("detailsSong").innerHTML = "Song: "
-    document.getElementById("detailsCreator").innerHTML = "Creator: "
-    document.getElementById("detailsDate").innerHTML = "Date Modified: "
-    document.getElementById("detailsNotes").innerHTML = "Notes: "
-
-    listButton.addEventListener("click", function() {
-      if (currentState.mode.id === STATE_MODE.CHOOSE_PLAYLIST.id) {
-        selectedPlaylist = item;
-      } else if (currentState.mode.id === STATE_MODE.CHOOSE_LEVEL.id) {
-        selectedLevel = item;
-        document.getElementById("detailsDifficulty").innerHTML = "Difficulty: " + item.difficulty
-        document.getElementById("detailsSong").innerHTML = "Song: " + item.song
+  try{
+    let listItems = [];
+    if (currentState.mode.id === STATE_MODE.CHOOSE_PLAYLIST.id) {
+      //listItems = samplePlaylists
+      listItems = currentState.playlistData.playlists;
+      let msg = listItems.length == 0 ? "Getting the playlists..." : "Choose a Playlist";
+      document.getElementById("chooseLevelText").innerHTML = msg;
+      document.getElementById("closeSidebarButton").innerHTML = "Cancel"
+      document.getElementById("detailsTitle").innerHTML = "Playlist Details"
+    } else if (currentState.mode.id === STATE_MODE.CHOOSE_LEVEL.id) {
+      if(currentState.selectedPlaylist == null){
+        //TODO error handling
+        document.getElementById("chooseLevelText").innerHTML = "Something's wrong. No Playlist found."
+        Logger.error("PopulateSidebarList: selectedPlaylist is null");
+        return;
+      }else{
+        listItems = currentState.selectedPlaylist.levels;
+        document.getElementById("chooseLevelText").innerHTML = "Choose a Level"
+        document.getElementById("closeSidebarButton").innerHTML = "Back"
+        document.getElementById("detailsTitle").innerHTML = "Level Details"  
       }
-      document.getElementById("detailsCreator").innerHTML = "Creator: " + item.creator
-      document.getElementById("detailsDate").innerHTML = "Date Modified: " + item.date
-      document.getElementById("detailsNotes").innerHTML = "Notes: " + item.notes
+    }
+    listItems.forEach(function(item, index) {
+      //NOTE - item fields get serialized using Property name instead of backing field even though backing field is listed as serialized. Huh.
+
+      const listItem = document.createElement("tr");
+      const listButton = document.createElement("td");
+      listButton.className = "ui sixteen wide big button";
+      listButton.innerHTML = item.NameMenu;
+  
+      listItem.append(listButton)
+      levelList.append(listItem)
+  
+      //Empty fields before anything's selected
+      document.getElementById("detailsDifficulty").innerHTML = "Difficulty: "
+      document.getElementById("detailsSong").innerHTML = "Song: "
+      document.getElementById("detailsCreator").innerHTML = "Creator: "
+      document.getElementById("detailsDate").innerHTML = "Date Modified: "
+      document.getElementById("detailsNotes").innerHTML = "Notes: "
+  
+      //When something is selected
+      listButton.addEventListener("click", function() {
+        if (currentState.mode.id === STATE_MODE.CHOOSE_PLAYLIST.id) {
+          currentState.selectedPlaylist = item;
+        } else if (currentState.mode.id === STATE_MODE.CHOOSE_LEVEL.id) {
+          //Levels
+          currentState.selectedLevel = item;
+          document.getElementById("detailsDifficulty").innerHTML = "Difficulty: " + item.Difficulty
+          let songID = currentState.playlistData.songIdNames[item.SongSource.usid];
+          let songName = songID ?  songID : "- not found -";
+          document.getElementById("detailsSong").innerHTML = "Song: " + songName;
+        }
+        //Levels and Playlists
+        document.getElementById("detailsCreator").innerHTML = "Creator: " + item.Creator
+        document.getElementById("detailsDate").innerHTML = "Date Modified: " + item.DateModified
+        document.getElementById("detailsNotes").innerHTML = "Notes: " + item.Notes
+      })
     })
-  })
+  }
+  catch (error) {
+    handleErrorException(Function.name, error);
+    //TODO change state or something here
+  }
 }
 
 // This function populates the headset ID selection with headset IDs, and listeners that update the selectedHeadset when clicked
 function PopulateList(list, listItems) {
-  listItems.forEach(function(item, index) {
-    const listItem = document.createElement("tr");
-    const listButton = document.createElement("td");
-    listButton.className = "ui sixteen wide big black button";
-    const listButtonText = document.createElement("span");
-    listButtonText.className = "ui yellow text"
-    listButtonText.innerHTML = item.name;
+  try{
+    listItems.forEach(function(item, index) {
+      const listItem = document.createElement("tr");
+      const listButton = document.createElement("td");
+      listButton.className = "ui sixteen wide big black button";
+      const listButtonText = document.createElement("span");
+      listButtonText.className = "ui yellow text"
+      listButtonText.innerHTML = item.name;
 
-    listButton.append(listButtonText)
-    listItem.append(listButton);
-    list.append(listItem);
+      listButton.append(listButtonText)
+      listItem.append(listButton);
+      list.append(listItem);
 
-    listButton.addEventListener("click", function() {
-      selectedHeadset = item;;
-      connectToSelectedHeadset();
-      document.getElementById("selectedHeadsetText").innerHTML = "Selected: " + selectedHeadset.name;
+      listButton.addEventListener("click", function() {
+        currentState.selectedHeadset = item;;
+        connectToSelectedHeadset();
+        document.getElementById("selectedHeadsetText").innerHTML = "Selected: " + currentState.selectedHeadset.name;
+      })
     })
-  })
+  }
+  catch (error) {
+    handleErrorException(Function.name,error);
+  }
 }
 
 // TODO: Leftover from sample, should be updated to work with errorText element
@@ -508,12 +569,12 @@ function connectToSelectedHeadset() {
   //Skip the passcode, at least for now
   //const passcodeInput = document.getElementById("passcodeInput")
   //const userInput = passcodeInput.value;
-  if (true /*userInput === selectedHeadset.passcode*/) {
+  if (true /*userInput === currentState.selectedHeadset.passcode*/) {
     setStateMode(STATE_MODE.Stopped.id)
     controlTopbar.style.backgroundColor = "grey";
     videoArea.style.backgroundColor = "grey";
     const headsetId = document.getElementById("headsetId")
-    headsetId.innerHTML = selectedHeadset.name
+    headsetId.innerHTML = currentState.selectedHeadset.name
     onSuccessfulPair()
   }
 }
@@ -523,9 +584,9 @@ function connectToSelectedHeadset() {
 // Called when passcode is accepted in PAIRING state, after transitioning to Stopped
 function onSuccessfulPair() {
   console.log('--- video-player onSuccessfulPair');
-  //connectionId = selectedHeadset.passcode;
+  //connectionId = currentState.selectedHeadset.passcode;
   //Switch to using headset name as the passcode
-  connectionId = selectedHeadset.name;
+  connectionId = currentState.selectedHeadset.name;
 
   const playerDiv = document.getElementById('player');
 
@@ -562,15 +623,32 @@ async function setupVideoPlayer(elements) {
 
 //Process a message from GC
 function processMessage(msgString) {
-  console.log("main.processMessage orig string: " + msgString);
+  Logger.debug("main.processMessage orig string: " + msgString);
   let msgObj = JSON.parse(msgString);
-  console.log("   obj back to json: " + JSON.stringify(msgObj));
+  //Logger.debug("   obj back to json: " + JSON.stringify(msgObj));
+
+  //Process the message
+  switch(msgObj.message) {
+    case INCOMING_MESSAGES.FULL_STATE:
+      break;
+    case INCOMING_MESSAGES.ALL_PLAYLISTS:
+      //Payload is array of playlist objects
+      currentState.playlistData = msgObj.dataObj;
+      break;
+    case INCOMING_MESSAGES.DEFINES:
+      break;
+    case INCOMING_MESSAGES.ERROR:
+      break;
+    case INCOMING_MESSAGES.TEST_MESSAGE:
+      break;
+  }
+
 }
 
 // Based on sample project
 // Handles video player when connection is lost
 function processDisconnect() {
-  console.log('main.disconnect entered ---');
+  Logger.debug('main.disconnect entered ---');
   const playerDiv = document.getElementById('player');
   clearChildren(playerDiv);
   videoPlayer.hangUp(connectionId);
