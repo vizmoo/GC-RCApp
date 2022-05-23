@@ -31,8 +31,9 @@
   </div>
   <div class="pusher">
     <div class="ui celled grid">
+      <!-- Top control/menu bar -->
       <div id="controlTopbar" class="grey row">
-        <div class="twenty wide column HIDESTATE statePAIRING">
+        <div class="twenty wide column HIDESTATE statePAIRING stateCONNECTION_REQUESTED stateEXPECTING_GC_STATE">
           <div class="ui compact grid">
             <div class="three wide column">
               <div class="ui compact grid">
@@ -96,12 +97,12 @@
       </div>
       <div class="grey row" id="videoArea">
         <div id="controlSidebar" class="two wide column">
-          <div class="ui compact grid HIDESTATE statePAIRING">
+          <div class="ui compact grid HIDESTATE statePAIRING stateCONNECTION_REQUESTED stateEXPECTING_GC_STATE">
             <div class="row">
-              <span class="ui big yellow text">00:00</span>
+              <span id="songTimeCurrentText" class="ui big yellow text">00:00</span>
             </div>
             <div class="row">
-              <span class="ui big yellow text">99:99</span>
+              <span id="songTimeDurationText" class="ui big yellow text">99:99</span>
             </div>
             <!-- STATE stateUNHANDLED-->
             <div class="row STATE stateUNHANDLED" style="display: none">
@@ -175,8 +176,8 @@
             </div>
             <!-- STATE stateCalibrating -->
             <div class="row STATE stateCalibrating" style="display: none">
-              <button id="seatedToggleButton" class="ui left floated fluid big black button">
-                <span id="seatedToggleText" class="ui yellow text">Seated Mode Off</span>
+              <button id="calibrationModeButton" class="ui left floated fluid big black button">
+                <span id="calibrationModeText" class="ui yellow text">Calibration Mode</span>
               </button>          
             </div>
             <div class="row STATE stateCalibrating" style="display: none">
@@ -205,44 +206,52 @@
               </button>          
             </div>
             <div class="row">
-              <span id="stateText" class="ui big yellow text">Stopped</span>
+              <span id="modeText" class="ui big yellow text">Stopped</span>
             </div>
           </div>
         </div>
         <div class="thirteen wide column">
           <!-- STATE statePAIRING -->
-          <div class="STATE statePAIRING">
-            <span class="ui huge yellow text" style="display: table; margin: 0 auto;">Groove Catcher Remote Control</span>
+          <div> <!-- TODO set 'STATE statePAIRING' just once for this div and have it propogate to child divs-->
+            <div class="STATE statePAIRING">
+              <span class="ui huge yellow text" style="display: table; margin: 0 auto;">Groove Catcher Remote Control</span>
+            </div>
+            <div class="STATE statePAIRING">
+              <span class="ui big yellow text" style="display: table; margin: 0 auto;">Choose a Headset to Connect</span>
+            </div>
+            <div class="STATE statePAIRING" style="width:650px;height:350px; overflow-x: hidden; overflow-y: scroll; margin: 0 auto; background-color: grey; align-items: center;">
+              <table id="headsetList" class="ui celled table">
+                <tbody>
+                </tbody>
+              </table>
+            </div>
+            <div class="STATE statePAIRING">
+              <span class="ui big yellow text" style="display: table; margin: 0 auto;">Wifi: [current wifi in use]</span>
+            </div>
+            <div class="STATE statePAIRING">
+              <span id="selectedHeadsetText" class="ui big yellow text" style="display: table; margin: 0 auto;">Selected: </span>
+            </div>
+            <!-- skipping the passcode, for now at least 
+            <div class="ui input" style="display: table; margin: 0 auto;">
+              <input class="STATE statePAIRING" id="passcodeInput" type="text" placeholder="Enter passcode" >
+            </div>
+            -->
+            <div>
+              <button id="connectToHeadsetButton" class="ui big black button STATE statePAIRING" style="display: table; margin: 0 auto;" >
+                <span class="ui yellow text">Connect</span>
+              </button> 
+            </div>
           </div>
-          <div class="STATE statePAIRING">
-            <span class="ui big yellow text" style="display: table; margin: 0 auto;">Choose a Headset to Connect</span>
+          <div id="ConnectingRequested" class="STATE stateCONNECTION_REQUESTED">
+            <span id="ConnectionRequestedText" class="ui big yellow text">Connection to headset requested...</span>
           </div>
-          <div class="STATE statePAIRING" style="width:650px;height:350px; overflow-x: hidden; overflow-y: scroll; margin: 0 auto; background-color: grey; align-items: center;">
-            <table id="headsetList" class="ui celled table">
-              <tbody>
-              </tbody>
-            </table>
+          <div id="GCStateExpected" class="STATE stateEXPECTING_GC_STATE">
+            <span id="GCStateExpectedText" class="ui big yellow text">Waiting for update from the headset...</span>
           </div>
-          <div class="STATE statePAIRING">
-            <span class="ui big yellow text" style="display: table; margin: 0 auto;">Wifi: [current wifi in use]</span>
-          </div>
-          <div class="STATE statePAIRING">
-            <span id="selectedHeadsetText" class="ui big yellow text" style="display: table; margin: 0 auto;">Selected: </span>
-          </div>
-          <!-- skipping the passcode, for now at least 
-          <div class="ui input" style="display: table; margin: 0 auto;">
-            <input class="STATE statePAIRING" id="passcodeInput" type="text" placeholder="Enter passcode" >
-          </div>
-          -->
-          <div>
-            <button id="connectToHeadsetButton" class="ui big black button STATE statePAIRING" style="display: table; margin: 0 auto;" >
-              <span class="ui yellow text">Connect</span>
-            </button> 
-          </div>
-          <div id="player" class="HIDESTATE statePAIRING">          
+          <div id="player" class="HIDESTATE statePAIRING stateCONNECTION_REQUESTED stateEXPECTING_GC_STATE">          
             <!-- STATE SYSTEM_MENU PART 2-->
             <div class="DEBUG STATE stateSystemMenuActive" style="width:250px;height:300px; overflow-x: hidden; overflow-y: hidden; margin-right: auto; background-color:black; display: none;">
-              <span id="stateText" class="ui big yellow text">WARNING: User has activated the Quest System Menu. Groove Catcher is suspended. Press the menu button on the right controller to exit system menu.</span>       
+              <span id="questSystemMenuText" class="ui big yellow text">WARNING: User has activated the Quest System Menu. Groove Catcher is suspended. Press the menu button on the right controller to exit system menu.</span>       
             </div>
             <!-- ERROR... -->
             <div style="width: 900px; height: 28px; overflow-x: hidden; overflow-y: hidden; margin-left: auto; margin-top: auto; background-color: black;">

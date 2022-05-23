@@ -43,10 +43,13 @@ export class VideoPlayer {
     this.videoTrackIndex = 0;
     this.maxVideoTrackLength = 1;
 
-    //Callbacks supplied by main to get events
-    // back to main app
-    this.mainDisconnect = function () { };
+    //Callbacks to get events back to main app.
+    //Main app must override these
+    this.mainProcessDisconnect = function () { };
     this.mainProcessMessage = function () {};
+    this.mainProcessError = function () {};
+    this.mainProcessOpen = function () {Logger.error("Default mainProcessOpen called!")};
+    this.mainProcessClose = function () {};
 
     //Stauffer - logger must be enabled
     Logger.enable();
@@ -72,10 +75,11 @@ export class VideoPlayer {
     // Create peerConnection with proxy server and set up handlers
     this.pc = new Peer(this.connectionId, true);
     this.pc.addEventListener('disconnect', () => {
-      _this.mainDisconnect();
+      _this.mainProcessDisconnect();
     });
     this.pc.addEventListener('trackevent', (e) => {
       const data = e.detail;
+      Logger.log('video-player trackevent received: ' + e, true);
       if (data.track.kind == 'video') {
         _this.videoTrackList.push(data.track);
       }
@@ -102,7 +106,7 @@ export class VideoPlayer {
     this.signaling.addEventListener('disconnect', async (e) => {
       const data = e.detail;
       if (_this.pc != null && _this.pc.connectionId == data.connectionId) {
-        _this.mainDisconnect();
+        _this.mainProcessDisconnect();
       }
     });
     this.signaling.addEventListener('offer', async (e) => {
@@ -134,12 +138,15 @@ export class VideoPlayer {
     this.channel = this.pc.createDataChannel(this.connectionId, 'data');
     this.channel.onopen = function () {
       Logger.log('video-player onopen hander: Datachannel connected.');
+      _this.mainProcessOpen();
     };
     this.channel.onerror = function (e) {
       Logger.log("The error " + e.error.message + " occurred\n while handling data with proxy server.");
+      _this.mainProcessError(e);
     };
     this.channel.onclose = function () {
       Logger.log('Datachannel disconnected.');
+      _this.mainProcessClose();
     };
     this.channel.onmessage = async (msg) => {
       Logger.log("video-player: entering channel.onmessage handler...");
@@ -153,7 +160,7 @@ export class VideoPlayer {
       }
       const msgString = new String(data);
       Logger.log("video-player: channel.onmessage handler: msg: " + msgString);
-      this.mainProcessMessage(msgString);
+      _this.mainProcessMessage(msgString);
     };
   }
 
