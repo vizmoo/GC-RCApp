@@ -159,7 +159,7 @@ export class VideoPlayer {
         data = msg.data;
       }
       const msgString = new String(data);
-      Logger.log("video-player: channel.onmessage handler: msg: " + msgString);
+      //Logger.log("video-player: channel.onmessage handler: msg: " + msgString);
       _this.mainProcessMessage(msgString);
     };
   }
