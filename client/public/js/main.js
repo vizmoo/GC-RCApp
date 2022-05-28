@@ -61,6 +61,7 @@ const INCOMING_MESSAGES = {
   FULL_STATE: 'FullState',
   DEFINES: 'Defines',
   ALL_PLAYLISTS: 'AllPlaylists',
+  CLOSING_CONNECTION: 'ClosingConnection',
   ERROR: 'Error',
   TEST_MESSAGE: 'TestMessage'
 }
@@ -116,7 +117,7 @@ window.document.oncontextmenu = function () {
 };
 
 window.addEventListener('resize', function () {
-  videoPlayer.resizeVideo && videoPlayer.resizeVideo();
+  videoPlayer?.resizeVideo && videoPlayer?.resizeVideo();
 }, true);
 
 window.addEventListener('beforeunload', async () => {
@@ -177,6 +178,11 @@ async function setup() {
   const uiToggleButton = document.getElementById("uiToggleButton")
   uiToggleButton.addEventListener("click", function () {
     sendGCAction(ACTIONS.SET_SHOW_UI, [!state.GC?.headsetUIenabled]);
+  });
+  
+  const uiDisconnectButton = document.getElementById("uiDisconnectButton")
+  uiDisconnectButton.addEventListener("click", function () {
+    Disconnect();    
   });
 
   const forceCancelButton = document.getElementById("forceCancelButton")
@@ -601,12 +607,11 @@ function onSuccessfulPair() {
 
   // add video player
   const elementVideo = document.createElement('video');
-  elementVideo.id = 'Video';
+  elementVideo.id = 'videoElement';
   elementVideo.style.touchAction = 'none';
   playerDiv.appendChild(elementVideo);
 
   setupVideoPlayer([elementVideo]).then(value => videoPlayer = value);
-
 }
 
 // From sample project
@@ -616,10 +621,11 @@ async function setupVideoPlayer(elements) {
   const videoPlayer = new VideoPlayer(elements);
 
   //Assign callbacks to handle events from videoPlayer here in main
-  videoPlayer.mainProcessDisconnect = processDataChannelDisconnect;
+  videoPlayer.mainProcessSignalingDisconnect = processSignalingDisconnect;
+  videoPlayer.mainProcessPeerDisconnect = processPeerDisconnect;
   videoPlayer.mainProcessMessage = processDataChannelMessage;
   videoPlayer.mainProcessOpen = processDataChannelOpened;
-  videoPlayer.mainProcessClose = processDataChannelClose;
+  videoPlayer.mainProcessChannelClose = processDataChannelClose;
   videoPlayer.mainProcessError = processDataChannelError;
 
   await videoPlayer.setupConnection(connectionId, useWebSocket);
@@ -681,6 +687,10 @@ function processDataChannelMessage(msgString) {
       //Payload is array of playlist objects
       state.playlistData = msgObj.dataObj;
       break;
+    case INCOMING_MESSAGES.CLOSING_CONNECTION:
+      //GC is shutting things down
+      Disconnect();
+      break;
     case INCOMING_MESSAGES.DEFINES:
       break;
     case INCOMING_MESSAGES.ERROR:
@@ -692,7 +702,7 @@ function processDataChannelMessage(msgString) {
 }
 
 function processDataChannelOpened(){
-  Logger.log("*** main.processDataChannelOpened: received", true);
+  Logger.log("*** main.processDataChannelOpened", true);
   //We have a conneciton. Now we wait for the first state from GC.
   setModeByObj(STATE_MODE.EXPECTING_GC_STATE);
 }
@@ -702,25 +712,40 @@ function processDataChannelError(errString){
   //TODO
 }
 
+//
 function processDataChannelClose() {
-  Logger.log("*** main.processDataChannelClose: received", true);
+  Logger.log("*** main.processDataChannelClose", true);
   //TODO
 }
 
-// Based on sample project
-// Handles video player when connection is lost
-function processDataChannelDisconnect() {
-  Logger.log('*** main.processDataChannelDisconnect entered ---', true);
-  const playerDiv = document.getElementById('player');
-  clearChildren(playerDiv);
-  videoPlayer.hangUp(connectionId);
-  videoPlayer = null;
-  connectionId = null;
-  showPlayButton();
+function processPeerDisconnect() {
+  Logger.log("*** main.processPeerDisconnect", true);
+  //TODO
+}
+
+function processSignalingDisconnect() {
+  Logger.log('*** main.processSignalingDisconnect entered ---', true);
+  // Based on sample project
+  // Handles video player when connection is lost
+  //Code that was here before is now in Disconnect so it can be called directly
+  Disconnect();
 }
 
 ////// END Video Player / DataChannel event handlers
 /////////////////////////////////////////////////////
+
+function Disconnect() {
+  if(videoPlayer == null)
+    return;
+
+  const playerDiv = document.getElementById('player');
+  clearChildren(playerDiv);
+  //This closes peer connection and signaling connection
+  videoPlayer.hangUp(connectionId);
+  videoPlayer = null;
+  connectionId = null;
+  setModeByObj(STATE_MODE.PAIRING);    
+}
 
 function clearChildren(element) {
   while (element.firstChild) {

@@ -45,11 +45,12 @@ export class VideoPlayer {
 
     //Callbacks to get events back to main app.
     //Main app must override these
-    this.mainProcessDisconnect = function () { };
+    this.mainProcessPeerDisconnect = function () { };
+    this.mainProcessSignalingDisconnect = function () {};
     this.mainProcessMessage = function () {};
     this.mainProcessError = function () {};
     this.mainProcessOpen = function () {Logger.error("Default mainProcessOpen called!")};
-    this.mainProcessClose = function () {};
+    this.mainProcessChannelClose = function () {};
 
     //Stauffer - logger must be enabled
     Logger.enable();
@@ -75,11 +76,12 @@ export class VideoPlayer {
     // Create peerConnection with proxy server and set up handlers
     this.pc = new Peer(this.connectionId, true);
     this.pc.addEventListener('disconnect', () => {
-      _this.mainProcessDisconnect();
+      Logger.log('video-player pc disconnect handler');
+      _this.mainProcessPeerDisconnect();
     });
     this.pc.addEventListener('trackevent', (e) => {
       const data = e.detail;
-      Logger.log('video-player trackevent received: ' + e, true);
+      Logger.log('* * * video-player trackevent received: ' + e, true);
       if (data.track.kind == 'video') {
         _this.videoTrackList.push(data.track);
       }
@@ -103,10 +105,12 @@ export class VideoPlayer {
       _this.signaling.sendCandidate(candidate.connectionId, candidate.candidate, candidate.sdpMid, candidate.sdpMLineIndex);
     });
 
+    //NOTE - this is what gets called first when you refresh web app
     this.signaling.addEventListener('disconnect', async (e) => {
+      Logger.log('video-player signaling disconnect handler');
       const data = e.detail;
       if (_this.pc != null && _this.pc.connectionId == data.connectionId) {
-        _this.mainProcessDisconnect();
+        _this.mainProcessSignalingDisconnect();
       }
     });
     this.signaling.addEventListener('offer', async (e) => {
@@ -131,9 +135,13 @@ export class VideoPlayer {
       }
     });
 
+    //////
+    //
+    // DATA CHANNEL
+    //
     // setup signaling
     await this.signaling.start();
-
+    
     // Create data channel with proxy server and set up handlers
     this.channel = this.pc.createDataChannel(this.connectionId, 'data');
     this.channel.onopen = function () {
@@ -145,11 +153,11 @@ export class VideoPlayer {
       _this.mainProcessError(e);
     };
     this.channel.onclose = function () {
-      Logger.log('Datachannel disconnected.');
-      _this.mainProcessClose();
+      Logger.log('video-player - channel.onClose');
+      _this.mainProcessChannelClose();
     };
     this.channel.onmessage = async (msg) => {
-      Logger.log("video-player: entering channel.onmessage handler...");
+      //Logger.log("video-player: entering channel.onmessage handler...");
       // receive message from unity and operate message
       let data;
       // receive message data type is blob only on Firefox
@@ -261,4 +269,5 @@ export class VideoPlayer {
       this.signaling = null;
     }
   }
+  
 }
