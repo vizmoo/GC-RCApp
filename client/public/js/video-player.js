@@ -251,6 +251,7 @@ export class VideoPlayer {
     }
   }
 
+  //Disconnect peer connection and signaling
   async hangUp(connectionId) {
     if (this.signaling == null) {
       return;

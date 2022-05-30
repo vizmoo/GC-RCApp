@@ -140,6 +140,13 @@ async function setup() {
   const headsetList = document.getElementById("headsetList")
   PopulateHeadsetList(headsetList, sampleHeadsets)
 
+  
+  const connectionRequestedTryAgainButton = document.getElementById("connectionRequestedTryAgainButton")
+  connectionRequestedTryAgainButton.addEventListener("click", Disconnect);
+
+  const GCStateExpectedTryAgainButton = document.getElementById("GCStateExpectedTryAgainButton")
+  GCStateExpectedTryAgainButton.addEventListener("click", Disconnect);
+
   const connectToHeadsetButton = document.getElementById("connectToHeadsetButton")
   connectToHeadsetButton.addEventListener("click", connectToSelectedHeadset);
 
@@ -336,7 +343,7 @@ function sendGCAction(action, params = []) {
 // Should only be used when we have a new state from GC, or with internal states
 //  like controlling playlist/song selection views
 function setModeByObj(stateModeObj) {
-  Logger.log("setStateMode: received state: " + stateModeObj.displayName);
+  Logger.log("setStateMode: received state: " + stateModeObj.id + " - " + stateModeObj.displayName);
   state.localModeObj = stateModeObj;
   updateElementVisibility();
   updateStateDisplayElements();
@@ -584,8 +591,8 @@ function connectToSelectedHeadset() {
   //const userInput = passcodeInput.value;
   if (true /*userInput === state.selectedHeadset.passcode*/) {
     setModeByObj(STATE_MODE.CONNECTION_REQUESTED)
-    controlTopbar.style.backgroundColor = "grey";
-    videoArea.style.backgroundColor = "grey";
+    //controlTopbar.style.backgroundColor = "grey";
+    //videoArea.style.backgroundColor = "grey";
     const headsetId = document.getElementById("headsetId")
     headsetId.innerHTML = state.selectedHeadset.name
     //*NOTE* seems we should only call this when we get some kind of 

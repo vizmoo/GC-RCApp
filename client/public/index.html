@@ -214,11 +214,20 @@
               </button> 
             </div>
           </div>
-          <div id="ConnectingRequested" class="STATE stateCONNECTION_REQUESTED">
-            <span id="ConnectionRequestedText" class="ui big yellow text">Connection to headset requested...</span>
+          <div id="connectionRequested" class="STATE stateCONNECTION_REQUESTED">
+            <span id="connectionRequestedText" class="ui big yellow text">
+              Connection to headset requested...
+              <br/>
+              You may need to restart the headset and then try again to connect.
+            </span>
+            <div id="connectionRequestedTryAgainButton" class="ui large button">Try Again</div>
           </div>
           <div id="GCStateExpected" class="STATE stateEXPECTING_GC_STATE">
-            <span id="GCStateExpectedText" class="ui big yellow text">Waiting for update from the headset...</span>
+            <span id="GCStateExpectedText" class="ui big yellow text">Waiting for update from the headset...
+              <br/>
+              You may need to restart the headset and then try again to connect.
+            </span>
+            <div id="GCStateExpectedTryAgainButton" class="ui large button">Try Again</div>
           </div>
           <div id="player" class="HIDESTATE statePAIRING stateCONNECTION_REQUESTED stateEXPECTING_GC_STATE">  
             <!-- Video Element - gets added here at runtime in main:onSuccessfulPair -->        
