@@ -23,7 +23,7 @@ export class VideoPlayer {
     this.connectionId = null;
 
     // main video
-    this.localStream = new MediaStream();
+    this.localStream = null; // = new MediaStream(); - moved instantiation to setupConnection
     this.video = elements[0];
     this.video.playsInline = true;
     this.video.addEventListener('loadedmetadata', function () {
@@ -65,6 +65,9 @@ export class VideoPlayer {
       this.pc = null;
     }
 
+    // Stauffer - moved this here to see if it would help audio work after disconnect/reconnect
+    this.localStream = new MediaStream();
+
     if (useWebSocket) {
       this.signaling = new WebSocketSignaling();
     } else {
@@ -86,8 +89,12 @@ export class VideoPlayer {
         _this.videoTrackList.push(data.track);
       }
       if (data.track.kind == 'audio') {
+        Logger.log("--- setupConnection: trackevent adding type 'audio'", true);
         _this.localStream.addTrack(data.track);
+        let audioTracks = _this.localStream.getAudioTracks();
+        Logger.log("--- setupConnection: trackevent adding type 'audio'. audioTracks length: " + audioTracks.length);
       }
+      // NOTE this gets called cuz maxVideoTrackLength == 1
       if (_this.videoTrackList.length == _this.maxVideoTrackLength) {
         _this.switchVideo(_this.videoTrackIndex);
       }
@@ -169,6 +176,11 @@ export class VideoPlayer {
       const msgString = new String(data);
       //Logger.log("video-player: channel.onmessage handler: msg: " + msgString);
       _this.mainProcessMessage(msgString);
+
+      //debugging
+      let videoTracks = _this.localStream.getVideoTracks();
+      let audioTracks = _this.localStream.getAudioTracks();
+      //Logger.log(JSON.stringify(audioTracks[0]));
     };
   }
 
@@ -186,6 +198,7 @@ export class VideoPlayer {
 
   // switch streaming destination main video and secondly video
   switchVideo(indexVideoTrack) {
+    Logger.log("xxx in switchVideo");
     this.video.srcObject = this.localStream;
     //this.videoThumb.srcObject = this.localStream2;
 
@@ -265,7 +278,10 @@ export class VideoPlayer {
   }
 
   async stop() {
+    Logger.log("^^^^^ video-player in stop", true);
     if (this.signaling) {
+      //Logger.log("^^^^^ video-player in stop and signaling still true",true);
+      //Yes, it gets here even after call to signaling.deleteConnection() in hangUp
       await this.signaling.stop();
       this.signaling = null;
     }

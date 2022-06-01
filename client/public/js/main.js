@@ -618,6 +618,7 @@ function onSuccessfulPair() {
   elementVideo.style.touchAction = 'none';
   playerDiv.appendChild(elementVideo);
 
+  //TODO - error handling
   setupVideoPlayer([elementVideo]).then(value => videoPlayer = value);
 }
 
