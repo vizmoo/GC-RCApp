@@ -11,9 +11,9 @@
 
 <body>
   <!-- Playlist and Level Chooser Sidebar -->
-  <div id="chooseLevelSidebar" class="ui very wide black inverted left vertical menu sidebar">
+  <div id="chooseLevelSidebar" style="display:flex" class="ui very wide black inverted left vertical menu sidebar">
     <span id="chooseLevelText" class="ui large yellow text">Choose a playlist</span>
-    <div style="width:250px;height:350px; overflow-x: hidden; overflow-y: scroll;">
+    <div style="margin-bottom: 1em; overflow-x: scroll; overflow-y: scroll;">
       <table class="ui celled table">
         <tbody id="levelList">
         </tbody>
@@ -80,7 +80,8 @@
             </div>
             <div class="two wide column">
               <button id="uiToggleButton" class="ui left floated fluid big black button">
-                <span id="uiToggleText" class="ui yellow text">UI On</span>
+                <span id="uiToggleTextHeader" class="ui yellow text">Headset UI</span>
+                <span id="uiToggleText" class="ui yellow text"><i>On/Off</i></span>
               </button>
             </div>
             <div class="two wide column">
@@ -102,6 +103,7 @@
             </div>
             <!-- STATE stateUNHANDLED-->
             <div class="row STATE stateUNHANDLED" style="display: none">
+              <span class="ui yellow text">Sorry, there was an error!</span>
               <button id="forceCancelButton" class="ui left floated fluid big black button">
                 <span class="ui yellow text">Force Cancel</span>
               </button>          
@@ -218,7 +220,7 @@
             <span id="connectionRequestedText" class="ui big yellow text">
               Connection to headset requested...
               <br/>
-              You may need to restart the headset and then try again to connect.
+              If this doesn't work in a moment, you may need to restart the headset and then try again.
             </span>
             <div id="connectionRequestedTryAgainButton" class="ui large button">Try Again</div>
           </div>

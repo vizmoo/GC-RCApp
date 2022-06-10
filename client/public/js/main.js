@@ -24,6 +24,8 @@ const STATE_MODE = {
   Catching: { id: "Catching", displayName: "Catching" }, //catching a level, actual gameplay
   CatchingPaused: { id: "CatchingPaused", displayName: "Paused" },
   SystemMenuActive: { id: "SystemMenuActive", displayName: "Quest Menu Active" },
+  //TODO something differet for this, instead of doubling up on UNHANDLED
+  UnhandledMode: { id: "UNHANDLED", displayName: "Unhandled Mode"},
 
   //Modes for internal behaviors that need to redraw the UI.
   //Use all caps to help differentiate.
@@ -34,7 +36,7 @@ const STATE_MODE = {
   EXPECTING_GC_STATE: {id: "EXPECTING_GC_STATE", displayName: "Waiting for headset state..."},
   CHOOSE_PLAYLIST: { id: "CHOOSE_PLAYLIST", displayName: "Choose Playlist" },
   CHOOSE_LEVEL: { id: "CHOOSE_LEVEL", displayName: "Choose Level" },
-  UNHANDLED: { id: "UNHANDLED", displayName: "Unhandled" }
+  UNHANDLED: { id: "UNHANDLED", displayName: "Unhandled Error" }
 }
 
 //Actions that are sent to GC to change things there.
@@ -168,7 +170,7 @@ async function setup() {
   //Volume slider toggle event
   $('.ui.slider')
     .slider({
-      min: 0,
+      min: 15, //don't make it zero, to avoid user turning it all the way down and being confused
       max: 100,
       start: 100,
       step: 1,
@@ -301,18 +303,8 @@ async function setup() {
   //'Use' button 
   //Will either advance to level selection or close sidebar and load selected level, depending on state
   const usePlaylistOrLevelSidebarButton = document.getElementById("usePlaylistOrLevelSidebarButton")
-  usePlaylistOrLevelSidebarButton.addEventListener("click", function () {
-    if (state.localModeObj === STATE_MODE.CHOOSE_PLAYLIST && state.selectedPlaylist !== null) {
-      setModeByObj(STATE_MODE.CHOOSE_LEVEL)
-      const levelList = document.getElementById("levelList")
-      levelList.innerHTML = ''
-      populateSidebarList(levelList)
-    } else if (state.localModeObj === STATE_MODE.CHOOSE_LEVEL && state.selectedLevel !== null) {
-      sidebarShow(false);
-      //Tell GC to try and load the level.
-      loadCurrentSelectedLevel();
-    }
-  })
+  usePlaylistOrLevelSidebarButton.addEventListener("click", useCurrentPlaylistOrLevel);
+
 } ////////////////// setup 
 
 /**
@@ -405,7 +397,7 @@ function updateStateDisplayElements(){
 
   //headset UI
   const uiToggleText = document.getElementById("uiToggleText")
-  uiToggleText.innerHTML = state.GC?.headsetUIenabled ? "UI On" : "UI Off"
+  uiToggleText.innerHTML = state.GC?.headsetUIenabled ? "On" : "Off"
 
   //calibration mode
   const calibrationModeText = document.getElementById("calibrationModeText");
@@ -523,28 +515,52 @@ function populateSidebarList(levelList) {
       document.getElementById("detailsNotes").innerHTML = "Notes: "
 
       //When something is selected (but still have to click Use This button)
-      listButton.addEventListener("click", function () {
-        listButton.className = defaultClass + " primary"; //emphasis
-        if (state.localModeObj === STATE_MODE.CHOOSE_PLAYLIST) {
-          state.selectedPlaylist = item;
-        } else if (state.localModeObj === STATE_MODE.CHOOSE_LEVEL) {
-          //Levels
-          state.selectedLevel = item;
-          document.getElementById("detailsDifficulty").innerHTML = "Difficulty: " + (item.DifficultyRating ? item.DifficultyRating : "Not set");
-          let songID = state.playlistData.songIdNames[item.SongSource.usid];
-          let songName = songID ? songID : "- not found -";
-          document.getElementById("detailsSong").innerHTML = "Song: " + songName;
-        }
-        //Levels and Playlists
-        document.getElementById("detailsCreator").innerHTML = "Creator: " + item.Creator;
-        document.getElementById("detailsDate").innerHTML = "Date Modified: " + item.DateModified;
-        document.getElementById("detailsNotes").innerHTML = "Notes: " + item.Notes ? item.Notes : "";
-      })
+      listButton.addEventListener("click", function () {listButtonOnClick(listButton, item, defaultClass)});
+      listButton.addEventListener("dblclick", function () {listButtonOnDoubleClick(listButton, item, defaultClass)});
     })
   }
   catch (error) {
     handleErrorException(Function.name, error);
     //TODO change state or something here
+  }
+}
+
+function listButtonOnDoubleClick(listButton, item, defaultClass){
+  listButtonOnClick(listButton, item, defaultClass);
+  useCurrentPlaylistOrLevel();
+}
+
+//Playlist of level list button is single-clicked for selection
+function listButtonOnClick(listButton, item, defaultClass){
+  listButton.className = defaultClass + " secondary"; //emphasis - options: {primary, secondary, ...?}
+  if (state.localModeObj === STATE_MODE.CHOOSE_PLAYLIST) {
+    state.selectedPlaylist = item;
+  } else if (state.localModeObj === STATE_MODE.CHOOSE_LEVEL) {
+    //Levels
+    state.selectedLevel = item;
+    document.getElementById("detailsDifficulty").innerHTML = "Difficulty: " + (item.DifficultyRating ? item.DifficultyRating : "Not set");
+    let songID = state.playlistData.songIdNames[item.SongSource.usid];
+    let songName = songID ? songID : "- not found -";
+    document.getElementById("detailsSong").innerHTML = "Song: " + songName;
+  }
+  //Levels and Playlists
+  document.getElementById("detailsCreator").innerHTML = "Creator: " + item.Creator;
+  document.getElementById("detailsDate").innerHTML = "Date Modified: " + item.DateModified;
+  document.getElementById("detailsNotes").innerHTML = "Notes: " + item.Notes ? item.Notes : "";
+}
+
+//Depending on mode, open and show levels of currently-selected playlist,
+// or load the currently-selected level
+function useCurrentPlaylistOrLevel(){
+  if (state.localModeObj === STATE_MODE.CHOOSE_PLAYLIST && state.selectedPlaylist !== null) {
+    setModeByObj(STATE_MODE.CHOOSE_LEVEL)
+    const levelList = document.getElementById("levelList")
+    levelList.innerHTML = ''
+    populateSidebarList(levelList)
+  } else if (state.localModeObj === STATE_MODE.CHOOSE_LEVEL && state.selectedLevel !== null) {
+    sidebarShow(false);
+    //Tell GC to try and load the level.
+    loadCurrentSelectedLevel();
   }
 }
 
@@ -657,7 +673,7 @@ async function setupVideoPlayer(elements) {
  * @param {*} msgString String (JSON) received from GC
  */
 function processDataChannelMessage(msgString) {
-  Logger.log("*** main.processDataChannelMessage orig string: " + msgString, true);
+  //Logger.log("*** main.processDataChannelMessage orig string: " + msgString, true);
   let msgObj = JSON.parse(msgString);
   //TODO - some kind of validation of msgObj
   //Logger.log("   obj back to json: " + JSON.stringify(msgObj));
