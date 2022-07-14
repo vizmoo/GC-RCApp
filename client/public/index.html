@@ -34,7 +34,7 @@
     <div class="ui celled grid">
       <!-- Top control/menu bar -->
       <div id="controlTopbar" class="black row">
-        <div class="twenty wide column HIDESTATE statePAIRING stateCONNECTION_REQUESTED stateEXPECTING_GC_STATE">
+        <div class="twenty wide column HIDESTATE statePAIRING stateCONNECTION_REQUESTED stateEXPECTING_GC_STATE stateSystemMenuActive">
           <div class="ui compact grid">
             <div class="three wide column">
               <div class="ui compact grid">
@@ -231,12 +231,23 @@
             </span>
             <div id="GCStateExpectedTryAgainButton" class="ui large button">Try Again</div>
           </div>
+          <div class="STATE stateSystemMenuActive" 
+               style="width: 80%; height: 80%; overflow-x: visible; overflow-y: visible; margin: 0 auto; background-color: red;
+                      position: absolute; z-index:9999; border-right:2px solid black; border-bottom:2px solid black; padding: 5px">
+            <span id="systemMenuActiveText" class="ui huge white text">System Menu Activated on Headset</span>       
+            <span id="systemMenuActiveText" class="ui large white text">
+              <br/>
+              <p class="ui large text" style="color: white">The user has pressed the system menu button and paused Groove Catcher.</p>
+              <p class="ui large text" style="color: white">Press the system menu button on the user's right controller - it's slightly recessed and has an oval on it.</p>
+            </span>       
+          </div>
+          <!-- ERROR... TODO -->
+          <div style="width: 900px; height: 28px; overflow-x: hidden; overflow-y: hidden; margin-left: auto; margin-top: auto; background-color: black;">
+            <span id="errorText" class="ui large yellow text"><i>no error</i></span>       
+          </div>
           <div id="player" class="HIDESTATE statePAIRING stateCONNECTION_REQUESTED stateEXPECTING_GC_STATE">  
             <!-- Video Element - gets added here at runtime in main:onSuccessfulPair -->        
-            <!-- ERROR... -->
-            <div style="width: 900px; height: 28px; overflow-x: hidden; overflow-y: hidden; margin-left: auto; margin-top: auto; background-color: black;">
-              <span id="errorText" class="ui large yellow text">Error: hehe</span>       
-            </div>
+            <!-- ***NOTE*** the children of this div get cleared out in main.Disconnect() when it's called-->
           </div>
         </div>
       </div>

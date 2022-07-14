@@ -23,7 +23,7 @@ const STATE_MODE = {
   CatchingReadyToStart: { id: "CatchingReadyToStart", displayName: "Ready to Start" },
   Catching: { id: "Catching", displayName: "Catching" }, //catching a level, actual gameplay
   CatchingPaused: { id: "CatchingPaused", displayName: "Paused" },
-  SystemMenuActive: { id: "SystemMenuActive", displayName: "Quest Menu Active" },
+  SystemMenuActive: { id: "SystemMenuActive", displayName: "Quest System Menu Active" },
   //TODO something differet for this, instead of doubling up on UNHANDLED
   UnhandledMode: { id: "UNHANDLED", displayName: "Unhandled Mode"},
 
@@ -340,6 +340,7 @@ function setModeByObj(stateModeObj) {
   updateElementVisibility();
   updateStateDisplayElements();
 }
+
 //Set the state mode based on id.
 //On error, does nothing.
 function setModeById(stateModeId) {
@@ -354,26 +355,35 @@ function setModeById(stateModeId) {
   return;
 }
 
-function loadCurrentSelectedLevel() {
-  if(state.selectedPlaylist == null){
-    Logger.error("loadCurrentSelectedLevel: selectedPlaylist == null");
-    return;
+// UI Elements that are only visible in a certain state are given the class "STATE" and the const 'id' field of the state in STATE_MODE[] prepended by 'state'.
+// Example: An element with class="STATE stateStopped" would only be visible in the "Stopped" state
+// If an element has the class "HIDESTATE" and a state name, then it will only be HIDDEN when in that state, and visible in any other state
+// Example: An element with class="HIDESTATE statePAIRING" would be hidden in the "PAIRING" state, but visible in every other state
+// This function toggles the visibility of elements tagged with "STATE" or "HIDESTATE" based on the current state
+function updateElementVisibility() {
+  const stateElements = document.getElementsByClassName("STATE")
+  for (var i = 0; i < stateElements.length; i++) {
+    const element = stateElements[i]
+    const stateClass = 'state' + state.localModeObj.id;
+    //display 'none' will hide element and it will NOT take up space in layout
+    element.style.display = (element.classList.contains(stateClass)) ? "flex" : "none"
   }
-  if(state.selectedLevel == null){
-    Logger.error("loadCurrentSelectedLevel: selectedLevel == null");
-    return;
+  const hideStateElements = document.getElementsByClassName("HIDESTATE")
+  for (var i = 0; i < hideStateElements.length; i++) {
+    const element = hideStateElements[i]
+    const hideStateClass = 'state' + state.localModeObj.id;
+    //NOTE visibility of 'hidden' will hide the elements but it will still take upspac in the layout.
+    element.style.visibility = (element.classList.contains(hideStateClass)) ? "hidden" : "visible"
   }
-
-  //Send the playlist and level id's
-  //NOTE - we don't change our local state here. Once GC gets this action it
-  // will respond with state update that's it loading a level
-  sendGCAction(ACTIONS.LOAD_LEVEL, [state.selectedPlaylist.UniqueID, state.selectedLevel.UniqueID]); 
-}
-
-// Request that GC send us its playlsists. 
-// We expect an async return via message
-function requestPlaylists() {
-  sendGCAction(ACTIONS.GET_PLAYLISTS);
+  //Sidebar
+  //Make sure it gets closed when it shouldn't be open, which happens if
+  // RCapp has it open, but state update comes from GC that forces it closed.
+  if(state.localModeObj != STATE_MODE.Stopped &&
+     state.localModeObj != STATE_MODE.CHOOSE_LEVEL &&
+     state.localModeObj != STATE_MODE.CHOOSE_PLAYLIST)
+  {
+    sidebarShow(false);   
+  }
 }
 
 //
@@ -424,37 +434,6 @@ function getFormattedTime(timeInSeconds) {
   let sec = (Math.round(timeInSeconds) % 60).toFixed(0).toString();
   let min = Math.trunc(timeInSeconds / 60).toString();
   return min.padStart(2,'0') + ":" + sec.padStart(2,'0');
-}
-
-// UI Elements that are only visible in a certain state are given the class "STATE" and the const 'id' field of the state in STATE_MODE[] prepended by 'state'.
-// Example: An element with class="STATE stateStopped" would only be visible in the "Stopped" state
-// If an element has the class "HIDESTATE" and a state name, then it will only be HIDDEN when in that state, and visible in any other state
-// Example: An element with class="HIDESTATE statePAIRING" would be hidden in the "PAIRING" state, but visible in every other state
-// This function toggles the visibility of elements tagged with "STATE" or "HIDESTATE" based on the current state
-function updateElementVisibility() {
-  const stateElements = document.getElementsByClassName("STATE")
-  for (var i = 0; i < stateElements.length; i++) {
-    const element = stateElements[i]
-    const stateClass = 'state' + state.localModeObj.id;
-    //display 'none' will hide element and it will NOT take up space in layout
-    element.style.display = (element.classList.contains(stateClass)) ? "flex" : "none"
-  }
-  const hideStateElements = document.getElementsByClassName("HIDESTATE")
-  for (var i = 0; i < hideStateElements.length; i++) {
-    const element = hideStateElements[i]
-    const hideStateClass = 'state' + state.localModeObj.id;
-    //NOTE visibility of 'hidden' will hide the elements but it will still take upspac in the layout.
-    element.style.visibility = (element.classList.contains(hideStateClass)) ? "hidden" : "visible"
-  }
-  //Sidebar
-  //Make sure it gets closed when it shouldn't be open, which happens if
-  // RCapp has it open, but state update comes from GC that forces it closed.
-  if(state.localModeObj != STATE_MODE.Stopped &&
-     state.localModeObj != STATE_MODE.CHOOSE_LEVEL &&
-     state.localModeObj != STATE_MODE.CHOOSE_PLAYLIST)
-  {
-    sidebarShow(false);   
-  }
 }
 
 /** Show/hide the playlist/level sidebar. Pass true to show, false to hide */
@@ -547,6 +526,28 @@ function listButtonOnClick(listButton, item, defaultClass){
   document.getElementById("detailsCreator").innerHTML = "Creator: " + item.Creator;
   document.getElementById("detailsDate").innerHTML = "Date Modified: " + item.DateModified;
   document.getElementById("detailsNotes").innerHTML = "Notes: " + item.Notes ? item.Notes : "";
+}
+
+function loadCurrentSelectedLevel() {
+  if(state.selectedPlaylist == null){
+    Logger.error("loadCurrentSelectedLevel: selectedPlaylist == null");
+    return;
+  }
+  if(state.selectedLevel == null){
+    Logger.error("loadCurrentSelectedLevel: selectedLevel == null");
+    return;
+  }
+
+  //Send the playlist and level id's
+  //NOTE - we don't change our local state here. Once GC gets this action it
+  // will respond with state update that's it loading a level
+  sendGCAction(ACTIONS.LOAD_LEVEL, [state.selectedPlaylist.UniqueID, state.selectedLevel.UniqueID]); 
+}
+
+// Request that GC send us its playlsists. 
+// We expect an async return via message
+function requestPlaylists() {
+  sendGCAction(ACTIONS.GET_PLAYLISTS);
 }
 
 //Depending on mode, open and show levels of currently-selected playlist,
