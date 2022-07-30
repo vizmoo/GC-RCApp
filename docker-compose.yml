@@ -1,0 +1,33 @@
+#docker-compose file to launch our WebApp server and coturn server
+#version is docker-compose file version (already up to 3.9 I believe in 7/2022)
+version: ‘4.4’
+
+services:
+  #our WebApp - I think I can call this whatever I want
+  render-server:
+    image: render-server
+    ports: 
+      #NOTE that Ryan orig had this as "80:80" (ie with quotes), but I
+      # was getting an error in 'docker compose up' about ports, and it
+      # works now w/out the quotes. Even though online it says to always
+      # pass this as a string (because for #'s < 60 it gets interpretted different by yml)
+      - 80:80
+    environment:
+      - WS=-w
+      - myPORT=80
+    restart: unless-stopped
+  coturn_server:
+    #by default will pull from Docker Hub unless specified otherwise elsewhere
+    # In this case, it should be pulling from https://hub.docker.com/r/coturn/coturn
+    image: coturn/coturn:latest
+    command:
+    # NOTE '$' is special char in docker, so $$ escapes it
+    - --external-ip=’$$(detect-external-ip)’
+    - --log-file=stdout
+    - --min-port=49160
+    - --max-port=49200
+    # This looks like a bind mount of local file to /etc/coturn/turnserver.conf within the container
+    # See https://docs.docker.com/storage/bind-mounts/
+    - -v $$(pwd)/turnserver.conf:/etc/coturn/turnserver.conf
+#    network_mode: “host”
+    restart: unless-stopped

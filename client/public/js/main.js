@@ -7,7 +7,7 @@ setup();
 
 let videoPlayer;
 let useWebSocket;
-let connectionId;
+let currentConnectionId = null;
 
 //State modes
 //Note that 'id' MUST match RCmodeStatesEnum values in GC.
@@ -140,8 +140,9 @@ async function setup() {
   controlTopbar.style.backgroundColor = "black";
   videoArea.style.backgroundColor = "black";
   const headsetList = document.getElementById("headsetList")
-  PopulateHeadsetList(headsetList, sampleHeadsets)
-
+  //
+  //TODO - retrieve a list of recently-used headsets and use it here
+  //PopulateHeadsetList(headsetList, sampleHeadsets)
   
   const connectionRequestedTryAgainButton = document.getElementById("connectionRequestedTryAgainButton")
   connectionRequestedTryAgainButton.addEventListener("click", Disconnect);
@@ -150,7 +151,7 @@ async function setup() {
   GCStateExpectedTryAgainButton.addEventListener("click", Disconnect);
 
   const connectToHeadsetButton = document.getElementById("connectToHeadsetButton")
-  connectToHeadsetButton.addEventListener("click", connectToSelectedHeadset);
+  connectToHeadsetButton.addEventListener("click", connectToHeadsetButtonHandler);
 
   const videoToggleButton = document.getElementById("videoToggleButton")
   videoToggleButton.addEventListener("click", function () {
@@ -565,7 +566,8 @@ function useCurrentPlaylistOrLevel(){
   }
 }
 
-// This function populates the headset ID selection with headset IDs, and listeners that update the selectedHeadset when clicked
+// This function populates the headset ID selection with headset IDs, 
+//  and listener that connects to the clicked headset item
 function PopulateHeadsetList(list, listItems) {
   try {
     listItems.forEach(function (item, index) {
@@ -601,6 +603,15 @@ function showWarningIfNeeded(startupMode) {
   }
 }
 
+function connectToHeadsetButtonHandler() {
+  const headsetIdInput = document.getElementById("headsetIdInput")
+  const id = headsetIdInput.value;
+  if(id && id != ""){
+    state.selectedHeadset = { name: id }
+    connectToSelectedHeadset();
+  }
+
+}
 //Using the current 'selectedHeadset', make a connection and start video player
 function connectToSelectedHeadset() {
   //Skip the passcode, at least for now
@@ -610,8 +621,8 @@ function connectToSelectedHeadset() {
     setModeByObj(STATE_MODE.CONNECTION_REQUESTED)
     //controlTopbar.style.backgroundColor = "grey";
     //videoArea.style.backgroundColor = "grey";
-    const headsetId = document.getElementById("headsetId")
-    headsetId.innerHTML = state.selectedHeadset.name
+    const headsetIdDisplay = document.getElementById("headsetId")
+    headsetIdDisplay.innerHTML = state.selectedHeadset.name
     //*NOTE* seems we should only call this when we get some kind of 
     // confirmation from signalling server that the connection is ready
     onSuccessfulPair()
@@ -623,9 +634,8 @@ function connectToSelectedHeadset() {
 // Called when passcode is accepted in PAIRING state, after transitioning to Stopped
 function onSuccessfulPair() {
   Logger.log('--- main:onSuccessfulPair');
-  //connectionId = state.selectedHeadset.passcode;
-  //Switch to using headset name as the passcode
-  connectionId = state.selectedHeadset.name;
+  //Switch to using headset name as the id
+  currentConnectionId = state.selectedHeadset.name;
 
   const playerDiv = document.getElementById('player');
 
@@ -653,7 +663,7 @@ async function setupVideoPlayer(elements) {
   videoPlayer.mainProcessChannelClose = processDataChannelClose;
   videoPlayer.mainProcessError = processDataChannelError;
 
-  await videoPlayer.setupConnection(connectionId, useWebSocket);
+  await videoPlayer.setupConnection(currentConnectionId, useWebSocket);
 
   /* Stauffer - disabled these.
      They look like there from the sample app for controlling camera from web app.
@@ -766,9 +776,9 @@ function Disconnect() {
   const playerDiv = document.getElementById('player');
   clearChildren(playerDiv);
   //This closes peer connection and signaling connection
-  videoPlayer.hangUp(connectionId);
+  videoPlayer.hangUp(currentConnectionId);
   videoPlayer = null;
-  connectionId = null;
+  currentConnectionId = null;
   setModeByObj(STATE_MODE.PAIRING);    
 }
 

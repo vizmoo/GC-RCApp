@@ -190,31 +190,37 @@
             <div class="STATE statePAIRING">
               <span class="ui huge yellow text" style="display: table; margin: 0 auto;">Groove Catcher Remote Control</span>
             </div>
-            <div class="STATE statePAIRING">
-              <span class="ui big yellow text" style="display: table; margin: 0 auto;">Choose a Headset to Connect</span>
+            <div class="STATE statePAIRING" style="text-align: center;">
+              <span class="ui big yellow text" style="display: table; margin: 1em; text-align: center;">Choose a Headset to Connect</span>
             </div>
-            <div class="STATE statePAIRING" style="width:650px;height:350px; overflow-x: hidden; overflow-y: scroll; margin: 0 auto; background-color: black; align-items: center;">
-              <table id="headsetList" class="ui celled table">
-                <tbody>
-                </tbody>
-              </table>
-            </div>
-            <div class="STATE statePAIRING">
-              <span class="ui big yellow text" style="display: table; margin: 0 auto;">Wifi: [current wifi in use]</span>
-            </div>
+            <!-- don't need this since headset is either chosen from clicking button in list, or entering id manually and clicking connect button
             <div class="STATE statePAIRING">
               <span id="selectedHeadsetText" class="ui big yellow text" style="display: table; margin: 0 auto;">Selected: </span>
             </div>
+            -->
             <!-- skipping the passcode, for now at least 
             <div class="ui input" style="display: table; margin: 0 auto;">
               <input class="STATE statePAIRING" id="passcodeInput" type="text" placeholder="Enter passcode" >
             </div>
             -->
+            <div class="ui input" style="display: table; margin: 0 auto;">
+              <input class="STATE statePAIRING" id="headsetIdInput" size="30" type="text" style="font-size:30px; text-transform:lowercase" placeholder="Enter a headset name/id" >
+            </div>
             <div>
               <button id="connectToHeadsetButton" class="ui big black button STATE statePAIRING" style="display: table; margin: 0 auto;" >
-                <span class="ui yellow text">Connect</span>
+                <span class="ui big yellow text">Connect</span>
               </button> 
             </div>
+          </div>
+          <div class="STATE statePAIRING" style="width:650px;height:350px; overflow-x: hidden; overflow-y: scroll; margin: 0 auto; background-color: black; align-items: center;">
+            <table id="headsetList" class="ui celled table">
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+          <div class="STATE statePAIRING">
+            <!-- TODO check https://www.npmjs.com/package/wifi-name or similar -->
+            <!-- <span id="currentWifi" class="ui big yellow text" style="display: table; margin: 0 auto;">Wifi: [current wifi in use]</span> -->
           </div>
           <div id="connectionRequested" class="STATE stateCONNECTION_REQUESTED">
             <span id="connectionRequestedText" class="ui big yellow text">
