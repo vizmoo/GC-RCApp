@@ -140,9 +140,18 @@ async function setup() {
   controlTopbar.style.backgroundColor = "black";
   videoArea.style.backgroundColor = "black";
   const headsetList = document.getElementById("headsetList")
-  //
+  
+
   //TODO - retrieve a list of recently-used headsets and use it here
   //PopulateHeadsetList(headsetList, sampleHeadsets)
+  //
+  //Retrieve most recently used headset
+  let recentHeadset = window.localStorage.getItem('recentHeadsetName');
+  if(recentHeadset) {
+    state.selectedHeadset = { name : recentHeadset };
+    const headsetIdInput = document.getElementById("headsetIdInput")
+    headsetIdInput.value = recentHeadset; 
+  }
   
   const connectionRequestedTryAgainButton = document.getElementById("connectionRequestedTryAgainButton")
   connectionRequestedTryAgainButton.addEventListener("click", Disconnect);
@@ -647,6 +656,9 @@ function onSuccessfulPair() {
 
   //TODO - error handling
   setupVideoPlayer([elementVideo]).then(value => videoPlayer = value);
+
+  //Save the headset name
+  window.localStorage.setItem('recentHeadsetName', currentConnectionId);
 }
 
 // From sample project
