@@ -28,6 +28,7 @@ services:
     - --max-port=49200
     # This looks like a bind mount of local file to /etc/coturn/turnserver.conf within the container
     # See https://docs.docker.com/storage/bind-mounts/
+    # 8/1/22 BUT NOTE - doesn't seem to be found during docker build
     - -v $$(pwd)/turnserver.conf:/etc/coturn/turnserver.conf
-#    network_mode: “host”
+#    network_mode: “host” #commented this out cuz of error at build time
     restart: unless-stopped

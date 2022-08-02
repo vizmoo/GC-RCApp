@@ -2,6 +2,11 @@ import { VideoPlayer } from "./video-player.js";
 import { registerGamepadEvents, registerKeyboardEvents, registerMouseEvents, sendClickEvent } from "./register-events.js";
 import { getServerConfig } from "./config.js";
 import * as Logger from "./logger.js";
+import { BUILD_TIMESTAMP } from "./build_timestamp.js"
+
+/** Version Number **/
+const VERSION_NUMBER = "0.1"
+/********************/
 
 setup();
 
@@ -135,13 +140,18 @@ async function setup() {
   const res = await getServerConfig();
   useWebSocket = res.useWebSocket;
 
+  //Version number display
+  //MAIN VERSION NUMBER IS DEFINED ABOVE MANUALLY
+  let verStr = VERSION_NUMBER + "_" + BUILD_TIMESTAMP;
+  document.getElementById("pairingVersionText").innerHTML = "Version " + verStr;
+  document.getElementById("mainVersionText").innerHTML = verStr;
+  
   //UI items that only exist in PAIRING state
   setModeByObj(STATE_MODE.PAIRING);
   controlTopbar.style.backgroundColor = "black";
   videoArea.style.backgroundColor = "black";
   const headsetList = document.getElementById("headsetList")
-  
-
+    
   //TODO - retrieve a list of recently-used headsets and use it here
   //PopulateHeadsetList(headsetList, sampleHeadsets)
   //

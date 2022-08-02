@@ -172,15 +172,24 @@
             <div class="row STATE stateLoadingLevel">
               <span class="ui big yellow text">Level is loading. Please wait...</span>
             </div>
+            <!-- Always showing -->
+            <!-- STATE mode Text-->
+            <div class="row">
+              <span id="modeText" class="ui big yellow text">Stopped</span>
+            </div>
+            <!-- Headset/connection id -->
             <div class="row">
               <span class="ui yellow text">Headset:</span>
             </div>
             <div class="row">
               <span id="headsetId" class="ui big yellow text">[HSID]</span>
             </div>
-            <!-- STATE mode Text-->
+            <!-- Version text -->
             <div class="row">
-              <span id="modeText" class="ui big yellow text">Stopped</span>
+              <span class="ui yellow text">Version:</span>
+            </div>
+            <div class="row">
+              <span id="mainVersionText" class="ui big yellow text">Version</span>
             </div>
           </div>
         </div>
@@ -190,8 +199,11 @@
             <div class="STATE statePAIRING">
               <span class="ui huge yellow text" style="display: table; margin: 0 auto;">Groove Catcher Remote Control</span>
             </div>
+            <div class="STATE statePAIRING">
+              <span class="ui big yellow text" id="pairingVersionText" style="display:table; margin: 0 auto;">version...</span>
+            </div>
             <div class="STATE statePAIRING" style="text-align: center;">
-              <span class="ui big yellow text" style="display: table; margin: 1em; text-align: center;">Choose a Headset to Connect</span>
+              <span class="ui big yellow text" style="display: table; margin: 1em auto 1em auto; text-align: center;">Enter or Choose a Headset to Connect</span>
             </div>
             <!-- don't need this since headset is either chosen from clicking button in list, or entering id manually and clicking connect button
             <div class="STATE statePAIRING">
