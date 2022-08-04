@@ -1,3 +1,8 @@
+## RCapp
+# build_timestamp.js is generated during every build
+client/public/js/build_timestamp.js
+
+
 # Logs
 logs
 *.log
