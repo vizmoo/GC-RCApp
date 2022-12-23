@@ -80,7 +80,7 @@ export class RenderStreaming {
   }
 
   getIPAddress(): string[] {
-    const interfaces = os.networkInterfaces();
+    const interfaces = os.networkInterfaces(); //gets network interface addresses from OS
     const addresses: string[] = [];
     for (const k in interfaces) {
       for (const k2 in interfaces[k]) {

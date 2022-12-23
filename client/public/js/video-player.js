@@ -148,7 +148,7 @@ export class VideoPlayer {
     //
     // setup signaling
     await this.signaling.start();
-    
+
     // Create data channel with proxy server and set up handlers
     this.channel = this.pc.createDataChannel(this.connectionId, 'data');
     this.channel.onopen = function () {
@@ -160,6 +160,7 @@ export class VideoPlayer {
       _this.mainProcessError(e);
     };
     this.channel.onclose = function () {
+      var d = new Date();
       Logger.log('video-player - channel.onClose');
       _this.mainProcessChannelClose();
     };
@@ -182,6 +183,12 @@ export class VideoPlayer {
       let audioTracks = _this.localStream.getAudioTracks();
       //Logger.log(JSON.stringify(audioTracks[0]));
     };
+  }
+
+  //Return the signaling URL as returned by signaling object.
+  //Haven't tried this yet.
+  getSignalingURL() {
+    return this.signaling ? this.signaling.url() : "not yet defined";
   }
 
   resizeVideo() {

@@ -10,9 +10,16 @@ const VERSION_NUMBER = "0.1"
 
 setup();
 
+//Globals
 let videoPlayer;
 let useWebSocket;
+/** ID of currently connected headset. null when not connected */
 let currentConnectionId = null;
+
+/*** Struct of various defines from GC
+ * null if not yet received 
+ */
+ let GCdefines = null;
 
 //State modes
 //Note that 'id' MUST match RCmodeStatesEnum values in GC.
@@ -29,6 +36,8 @@ const STATE_MODE = {
   Catching: { id: "Catching", displayName: "Catching" }, //catching a level, actual gameplay
   CatchingPaused: { id: "CatchingPaused", displayName: "Paused" },
   SystemMenuActive: { id: "SystemMenuActive", displayName: "Quest System Menu Active" },
+  SystemPaused: { id: "SystemPaused", displayName: "Quest System Is Sleeping" },
+  SystemOutOfGuardian: { id: "SystemOutOfGuardian", displayName: "Quest Is Out of Play Area Guardian" },
   //TODO something differet for this, instead of doubling up on UNHANDLED
   UnhandledMode: { id: "UNHANDLED", displayName: "Unhandled Mode"},
 
@@ -43,48 +52,6 @@ const STATE_MODE = {
   CHOOSE_LEVEL: { id: "CHOOSE_LEVEL", displayName: "Choose Level" },
   UNHANDLED: { id: "UNHANDLED", displayName: "Unhandled Error" }
 }
-
-//Actions that are sent to GC to change things there.
-//Values must match GC:RemoteControl:actionsEnum
-const ACTIONS = {
-  START_CATCHING: "StartCatching",
-  PAUSE: "Pause",
-  RESUME_CATCHING: "PausedResumeCatching",
-  RESTART_CATCHING: "PausedRestartCatching",
-  QUIT_CANCEL: "QuitCancel",
-  FORCE_CANCEL: "ForceCancel",
-  SET_CALIBRATION_MODE: "SetCalibrationMode",
-  SET_CASTING: "SetCasting",
-  SET_GAME_VOLUME: "SetGameVolume",
-  SET_SHOWSCORE: "SetShowScore",
-  SET_SHOW_UI: "SetShowUI",
-  GET_PLAYLISTS: "GetPlaylists",
-  LOAD_LEVEL: "LoadLevel"
-}
-
-//Valid message strings coming from GC.
-//See OutgoingSignalMessage enum in GC:RemoteControl
-const INCOMING_MESSAGES = {
-  FULL_STATE: 'FullState',
-  DEFINES: 'Defines',
-  ALL_PLAYLISTS: 'AllPlaylists',
-  CLOSING_CONNECTION: 'ClosingConnection',
-  ERROR: 'Error',
-  TEST_MESSAGE: 'TestMessage'
-}
-
-// For testing population of headset ID list
-let sampleHeadsets = [
-  {
-    name: "VZ001",
-    //passcode: "AAAAA"
-  },
-  {
-    name: "X4963E21",
-    //passcode: "edocssap"
-  }
-]
-
 
 let state = {
   //The primary state mode the RCApp is in.
@@ -102,8 +69,43 @@ let state = {
   //*locally selected* level object ref that will be sent to GC for loading request. Might not be same as *loaded* level
   selectedLevel: null,
   //The most recently-received GC state. See GC:RemoteControl:GCappState
-  GC: null
+  GC: null,
+  /** Stores the time of the most recently-received state update from GC 
+   *  We use this like a live signal, a heartbeat from GC.
+  */
+  previousStateUpdateTime: 0.0
 }
+
+//Actions that are sent to GC to change things there.
+//Values must match GC:RemoteControl:actionsEnum
+const ACTIONS = {
+  START_CATCHING: "StartCatching",
+  PAUSE: "Pause",
+  RESUME_CATCHING: "PausedResumeCatching",
+  RESTART_CATCHING: "PausedRestartCatching",
+  QUIT_CANCEL: "QuitCancel",
+  FORCE_CANCEL: "ForceCancel",
+  SET_CALIBRATION_MODE: "SetCalibrationMode",
+  SET_CASTING: "SetCasting",
+  SET_GAME_VOLUME: "SetGameVolume",
+  SET_SHOWSCORE: "SetShowScore",
+  SET_SHOW_UI: "SetShowUI",
+  GET_PLAYLISTS: "GetPlaylists",
+  LOAD_LEVEL: "LoadLevel",
+  GET_DEFINES: "GetDefines"
+}
+
+//Valid message strings coming from GC.
+//See OutgoingSignalMessage enum in GC:RemoteControl
+const INCOMING_MESSAGES = {
+  FULL_STATE: 'FullState',
+  DEFINES: 'Defines',
+  ALL_PLAYLISTS: 'AllPlaylists',
+  CLOSING_CONNECTION: 'ClosingConnection',
+  ERROR: 'Error',
+  TEST_MESSAGE: 'TestMessage'
+}
+
 
 /////////////////////////////////////////////////
 
@@ -325,6 +327,9 @@ async function setup() {
   const usePlaylistOrLevelSidebarButton = document.getElementById("usePlaylistOrLevelSidebarButton")
   usePlaylistOrLevelSidebarButton.addEventListener("click", useCurrentPlaylistOrLevel);
 
+  //Start the timer checking for conneciton loss
+  window.setTimeout(checkForStaleConnection, 2000);
+
 } ////////////////// setup 
 
 /**
@@ -355,7 +360,7 @@ function sendGCAction(action, params = []) {
 // Should only be used when we have a new state from GC, or with internal states
 //  like controlling playlist/song selection views
 function setModeByObj(stateModeObj) {
-  Logger.log("setStateMode: received state: " + stateModeObj.id + " - " + stateModeObj.displayName);
+  Logger.log("setModeByObj: received state: " + stateModeObj.id + " - " + stateModeObj.displayName);
   state.localModeObj = stateModeObj;
   updateElementVisibility();
   updateStateDisplayElements();
@@ -374,6 +379,45 @@ function setModeById(stateModeId) {
   Logger.error("** setStateModeById: unrecognized id: " + stateModeId);
   return;
 }
+
+/** Request that GC send its defines.
+ * We expect an async return via message */
+function requestDefines(){
+  sendGCAction(ACTIONS.GET_DEFINES);
+}
+
+/** Used to check if the connection to headset has gone stale,
+ * ie connection is down w/out having received a disconnect.
+ * Initially at least, this is a backup way to detect when headset has
+ * gone to sleep if the sleep/pause event from GC isn't sent properly.
+ * Hasn't been fully used and tested.
+ * 12/23/2022 - NOT USING THIS, but keep for now in case we use it later.
+ */
+function checkForStaleConnection() {
+  if (currentConnectionId == null)
+    return;
+  //If we haven't yet got the defines, request them and skeedaddle.
+  //Should be ok to request them multiple times.
+  if (GCdefines == null) {
+    requestDefines();
+    return;
+  }
+  //If State hasn't been received yet, skeedaddle
+  if(state.previousStateUpdateTime == 0.0)
+    return;
+  //Check if the last time we got a full state from GC is passed some threshold
+  let diff = (Date.now()/1000.0) - state.previousStateUpdateTime;
+  let thresh = Math.max(4, 4.0 * GCdefines.stateUpdatePeriodSec);
+  if( diff > thresh ) {
+    //TODO I am here ...
+    //Put us in a state to wait and try automaticcaly reconnecting after some delay
+    Logger.log("checkForStaleConnection - connection has gone stale");
+  }else{
+    //Only check again if we haven't already gone stale
+    window.setTimeout(checkForStaleConnection, 1000);
+  }
+}
+
 
 // UI Elements that are only visible in a certain state are given the class "STATE" and the const 'id' field of the state in STATE_MODE[] prepended by 'state'.
 // Example: An element with class="STATE stateStopped" would only be visible in the "Stopped" state
@@ -445,6 +489,29 @@ function updateStateDisplayElements(){
   songTimeCurrentText.innerHTML = getFormattedTime(state.GC?.currentLevelTimeSeconds);
   const songTimeDurationText = document.getElementById("songTimeDurationText");
   songTimeDurationText.innerHTML = getFormattedTime(state.GC?.currentLevelDurationSeconds)
+
+  //system special state warning messages
+  //handles multiple states
+  let sysHeaderText = "Unexpect mode triggered System Special State ";
+  let sysBodyText = "Please tell the Vizmoo support team. Current state ID: " + state.localModeObj.id;
+  switch(state.localModeObj.id){
+    case STATE_MODE.SystemPaused.id:
+      sysHeaderText = "Headset Has Been Paused or is Sleeping";
+      sysBodyText = "The headset is sleeping. To resume, put it back on the user's head, and press the headset's power button to wake it."
+    break;
+    case STATE_MODE.SystemMenuActive.id:
+      sysHeaderText = "System Menu Activated on Headset";
+      sysBodyText = "The user has pressed the system menu button and paused Groove Catcher.<br>Press the system menu button on the user's right controller - it's slightly recessed and has an oval on it."
+    break;
+    case STATE_MODE.SystemOutOfGuardian.id:
+      sysHeaderText = "The Headset Is Outside the Play Area";
+      sysBodyText = "The Headset has been moved outside of the set Guardian/Play Area.<br>Move it back to resume.<br>You may need to press the headset's power button to wake it."
+    break;
+  }
+  const sysHeader = document.getElementById("systemSpecialStateHeaderText");
+  const sysBody = document.getElementById("systemSpecialStateBodyText");
+  sysHeader.innerHTML = sysHeaderText;
+  sysBody.innerHTML = sysBodyText;
 }
 
 function getFormattedTime(timeInSeconds) {
@@ -719,6 +786,7 @@ function processDataChannelMessage(msgString) {
         Logger.error("** processDataChannelMessage: FULL_STATE: GCMode not defined. msgString: " + msgString + "\nmsgObj: " + JSON.stringify(msgObj));
         return;
       }
+      Logger.log("Recevied FULL_STATE", false, false);
       //Store the new state from GC    
       state.GC = msgObj.dataObj;
       //If mode has changed, update it here
@@ -737,8 +805,9 @@ function processDataChannelMessage(msgString) {
         //Do this to update regularly changing things like level time and score
         // even when there's no mode change
         updateStateDisplayElements();
-      }
-      
+      }     
+      //Store the time
+      state.previousStateUpdateTime = Date.now() / 1000.0;
       break;
     case INCOMING_MESSAGES.ALL_PLAYLISTS:
       //Payload is array of playlist objects
@@ -749,11 +818,19 @@ function processDataChannelMessage(msgString) {
       Disconnect();
       break;
     case INCOMING_MESSAGES.DEFINES:
+      Logger.log("Received DEFINES");
+      //Payload is an object.
+      //See GC:RemoteControl:RCappDefines
+      GCdefines = msgObj.dataObj;
       break;
     case INCOMING_MESSAGES.ERROR:
       break;
     case INCOMING_MESSAGES.TEST_MESSAGE:
+      var d = new Date();
+      Logger.log("Recevied TEST_MESSAGE: " + msgObj.text);
       break;
+    default:
+      Logger.error("UNKNOWN DataChannel Message: " + msgObj.message);
   }
 
 }

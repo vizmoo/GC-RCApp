@@ -189,7 +189,7 @@
               <span class="ui yellow text">Version:</span>
             </div>
             <div class="row">
-              <span id="mainVersionText" class="ui big yellow text">Version</span>
+              <span id="mainVersionText" class="ui yellow text">Version</span>
             </div>
           </div>
         </div>
@@ -235,28 +235,32 @@
             <!-- <span id="currentWifi" class="ui big yellow text" style="display: table; margin: 0 auto;">Wifi: [current wifi in use]</span> -->
           </div>
           <div id="connectionRequested" class="STATE stateCONNECTION_REQUESTED">
-            <span id="connectionRequestedText" class="ui big yellow text">
+            <span id="connectionRequestedText" class="ui big yellow text" style="margin:10px;">
               Connection to headset requested...
+              <br/>
               <br/>
               If this doesn't work in a moment, you may need to restart the headset and then try again.
             </span>
-            <div id="connectionRequestedTryAgainButton" class="ui large button">Try Again</div>
+            <div id="connectionRequestedTryAgainButton" class="ui large button" style="margin:10px;">Try Again</div>
           </div>
           <div id="GCStateExpected" class="STATE stateEXPECTING_GC_STATE">
-            <span id="GCStateExpectedText" class="ui big yellow text">Waiting for update from the headset...
-              <br/>
+            <span id="GCStateExpectedText" class="ui big yellow text" style="margin:10px;">Waiting for update from the headset...
+              <br/><br/>
               You may need to restart the headset and then try again to connect.
             </span>
-            <div id="GCStateExpectedTryAgainButton" class="ui large button">Try Again</div>
+            <div id="GCStateExpectedTryAgainButton" class="ui large button" style="margin:10px;">Try Again</div>
           </div>
-          <div class="STATE stateSystemMenuActive" 
+          <div class="STATE stateSystemMenuActive stateSystemPaused stateSystemOutOfGuardian" 
                style="width: 80%; height: 80%; overflow-x: visible; overflow-y: visible; margin: 0 auto; background-color: red;
                       position: absolute; z-index:9999; border-right:2px solid black; border-bottom:2px solid black; padding: 5px">
-            <span id="systemMenuActiveText" class="ui huge white text">System Menu Activated on Headset</span>       
-            <span id="systemMenuActiveText" class="ui large white text">
+            <span id="systemSpecialStateHeaderText" class="ui huge white text" style="margin:10px;">this is set at runtime</span>       
+            <span id="systemSpecialStateSpan" class="ui large white text" style="margin:10px;">
               <br/>
-              <p class="ui large text" style="color: white">The user has pressed the system menu button and paused Groove Catcher.</p>
+              <p id="systemSpecialStateBodyText" class="ui large text" style="color: white">this is set at runtime</p>
+              <!--
+              <p id="systemMenuActiveBodyText" class="ui large text" style="color: white">The user has pressed the system menu button and paused Groove Catcher.</p>
               <p class="ui large text" style="color: white">Press the system menu button on the user's right controller - it's slightly recessed and has an oval on it.</p>
+              -->
             </span>       
           </div>
           <!-- ERROR... TODO -->

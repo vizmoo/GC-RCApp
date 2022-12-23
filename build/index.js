@@ -72,7 +72,7 @@ var RenderStreaming = /** @class */ (function () {
         return new RenderStreaming(options);
     };
     RenderStreaming.prototype.getIPAddress = function () {
-        var interfaces = os.networkInterfaces();
+        var interfaces = os.networkInterfaces(); //gets network interface addresses from OS
         var addresses = [];
         for (var k in interfaces) {
             for (var k2 in interfaces[k]) {
