@@ -250,7 +250,7 @@ export class VideoPlayer {
     return this._videoScale;
   }
 
-  sendMsg(msg) {
+  sendMsg(msg, logIt) {
     if (this.channel == null) {
       return;
     }
@@ -259,7 +259,8 @@ export class VideoPlayer {
         Logger.log('video-player.sendMsg: Connection not ready');
         break;
       case 'open':
-        Logger.log('video-player.sendMsg msg: ' + msg);
+        if(logIt)
+          Logger.log('video-player.sendMsg msg: ' + msg);
         this.channel.send(msg);
         break;
       case 'closing':

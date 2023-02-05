@@ -497,7 +497,7 @@ function updateStateDisplayElements(){
   switch(state.localModeObj.id){
     case STATE_MODE.SystemPaused.id:
       sysHeaderText = "Headset Has Been Paused or is Sleeping";
-      sysBodyText = "The headset is sleeping. To resume, put it back on the user's head, and press the headset's power button to wake it."
+      sysBodyText = "The headset is sleeping. To resume, put it back on the user's head. You may need to press the headset's power button to wake it."
     break;
     case STATE_MODE.SystemMenuActive.id:
       sysHeaderText = "System Menu Activated on Headset";
@@ -806,6 +806,8 @@ function processDataChannelMessage(msgString) {
         // even when there's no mode change
         updateStateDisplayElements();
       }     
+      //Acknowledge receipt
+      sendCommandJSON('FullStateAck','',null);
       //Store the time
       state.previousStateUpdateTime = Date.now() / 1000.0;
       break;
@@ -854,7 +856,10 @@ function processDataChannelClose() {
 
 function processPeerDisconnect() {
   Logger.log("*** main.processPeerDisconnect", true);
-  //TODO
+  //This is getting called when video-player gets disconnect event from peer connection (Peer class)
+  //Empirically, this happens when Peer has timed-out while the headset is sleeping during
+  // a connection session.
+  Disconnect();
 }
 
 function processSignalingDisconnect() {
@@ -899,16 +904,18 @@ function sendTestMessageJSON(videoPlayer, msg) {
 }
 
 //Send a command message as expected by RemoteControl in GC
+//command and subcommand strings must match those expected by RemoteControl in GC.
 function sendCommandJSON(command, subcommand, parametersArray) {
   if (!videoPlayer) {
     Logger.error("sendCommandJSON: videoPlayer not valid");
     return;
   }
+  //Logger.log("sendCommandJSON: " + command + " - " + subcommand);
   let obj = {
     command: command,
     subcommand: subcommand,
     parameters: parametersArray,
     timestamp: new Date()
   }
-  videoPlayer && videoPlayer.sendMsg(JSON.stringify(obj));
+  videoPlayer && videoPlayer.sendMsg(JSON.stringify(obj), command != "FullStateAck");
 }
