@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "prestart": "npm install",
-    "build": "generate-build-timestamp.sh && tsc -p tsconfig.build.json",
+    "build": "./generate-build-timestamp.sh && tsc -p tsconfig.build.json",
     "test": "jest --colors test/*.ts",
     "newman": "newman run test/renderstreaming.postman_collection.json",
     "start": "node ./build/index.js",
